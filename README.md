@@ -13,8 +13,12 @@ This can be changed in `config.txt`
 
 **Warning: This program runs commands on your system to talk to `scanimage`.**
 
+`sane-utils` is the package that provides `scanimage`. Use APT or your system's
+equivalent to install.
+
 ## Installation
 ```console
+sudo apt install sane-utils
 pip install -r requirements.txt
 ```
 
