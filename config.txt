@@ -1,2 +1,3 @@
 [main]
 printer = None
+port = 3004
