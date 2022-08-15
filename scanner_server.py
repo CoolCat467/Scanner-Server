@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>."""
 
 __title__ = 'Scanner Web Server'
 __author__ = 'CoolCat467'
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 from typing import Any, Final, Optional, Union
 
@@ -482,8 +482,8 @@ async def settings_post() -> Union[wkresp, str]:
 
 async def serve_scanner(root_dir: str,
                         device_name: str,
-                        ip_addr: str='',
-                        port: int=3004) -> None:
+                        port: int=3004,
+                        ip_addr: str='') -> None:
     "Server scanner"
     
     if not ip_addr:
@@ -522,23 +522,36 @@ def run() -> None:
     config.read(conf_file)
     
     target = 'None'
+    port = 3004
     
     rewrite = True
     if config.has_section('main'):
+        rewrite = False
         if config.has_option('main', 'printer'):
             target = config.get('main', 'printer')
-            rewrite = False
+        else:
+            rewrite = True
+        if config.has_option('main', 'port'):
+            raw = config.get('main', 'port')
+            rewrite = True
+            if raw.isdigit():
+                port = int(raw)
+                rewrite = False
+        else:
+            rewrite = True
     
     if rewrite:
         config.clear()
-        config.read_dict({'main': {'target': target}})
+        config.read_dict({'main': {'target': target, 'port': port}})
+        with open(conf_file, 'w', encoding='utf-8') as config_file:
+            config.write(config_file)
     
-    print(f'Default Printer:\n{target}\n')
+    print(f'Default Printer: {target}\nPort: {port}\n')
     
     if target == 'None':
         print("No default device in config file. Select one from `scanimage -L`.")
     
-    trio.run(serve_scanner, root_dir, target)
+    trio.run(serve_scanner, root_dir, target, port)
 
 if __name__ == '__main__':
     print(f'{__title__} v{__version__}  Copyright (C) 2022  {__author__}\n')
