@@ -8,7 +8,8 @@ to devices through the SANE (Scanner Access Now Easy) interface.
 
 This program is intended to be used alongside CUPS, but may not be required.
 
-The web server is hosted on port `3004` when running.
+The web server is hosted on port `3004` on default when running.
+This can be changed in `config.txt`
 
 **Warning: This program runs commands on your system to talk to `scanimage`.**
 
