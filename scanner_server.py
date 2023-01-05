@@ -31,22 +31,45 @@ import socket
 from configparser import ConfigParser
 from pathlib import Path
 from urllib.parse import urlencode
+import time
 
 import trio
-
 from hypercorn.config import Config
 from hypercorn.trio import serve
-
 from quart_trio import QuartTrio
-
 from quart import request, Response
-
 from werkzeug import Response as wkresp
+
+
+def log(message: str, level: int = 0) -> None:
+    "Log a message to console and log file."
+    levels = ['INFO', 'ERROR']
+    
+    root_dir = path.split(__file__)[0]
+    log_file = path.join(root_dir, 'log.txt')
+    
+    log_level = levels[min(max(0, level), len(levels)-1)]
+    log_time = time.asctime()
+    log_message_text = message.encode("unicode_escape").decode("utf-8")
+    
+    log_msg = f'[{__title__}] [{log_time}] [{log_level}] {log_message_text}'
+    
+    if not path.exists(log_file):
+        with open(log_file, mode='w', encoding='utf-8') as file:
+            file.close()
+        log('Log file does not exist!', 1)
+        log('Created log file')
+    with open(log_file, mode='a', encoding='utf-8') as file:
+        file.write(f'{log_msg}\n')
+        file.close()
+    print(log_msg)
 
 
 def call_command(command: tuple[str, ...],
                  get_output: bool=True) -> str:
     "Calls a given command in a sub-shell and returns the output as a string"
+    command_msg = ' '.join(f"'{x}'" for x in command)
+    log(f'Running system command "{command_msg}"')
     if get_output:
         try:
             with subprocess.Popen(command, stdout=subprocess.PIPE) as process:
@@ -69,6 +92,7 @@ def call_command(command: tuple[str, ...],
         pass
     return ''
 
+
 def find_ip() -> str:
     "Utility function to guess the IP where the server can be found from the network"
     # we get a UDP-socket for the TEST-networks reserved by IANA.
@@ -90,13 +114,16 @@ def find_ip() -> str:
     
     return candidates[0]
 
+
 def indent(level: int, text: str) -> str:
     "Indent text by level of spaces."
     return '\n'.join(' '*level+line for line in text.splitlines())
 
+
 def deindent(level: int, text: str) -> str:
     "Undo indent on text by level of characters."
     return '\n'.join(line[level:] for line in text.splitlines())
+
 
 def get_scanners() -> dict[str, str]:
     "Get scanner scanners"
@@ -108,9 +135,11 @@ def get_scanners() -> dict[str, str]:
         device_map.append(printer.split('='))
     return dict(device_map)
 
+
 def part_quotes(text: str, which: int, quotes: str="'") -> str:
     "Return part which of text within quotes."
     return text.split(quotes)[which*2+1]
+
 
 class DeviceSetting:
     "Setting for device"
@@ -133,8 +162,10 @@ class DeviceSetting:
     def __repr__(self) -> str:
         return f'DeviceSetting({self.name!r}, {self.options!r}, {self.default!r}, {self.desc!r})'
 
+
 app: Final = QuartTrio(__name__)  # pylint: disable=invalid-name
 app_storage: Final[dict[str, Any]] = {}  # pylint: disable=invalid-name
+
 
 def get_device_settings(device: str) -> list[DeviceSetting]:
     "Get device settings. Cache results in app storage."
@@ -192,6 +223,7 @@ def get_device_settings(device: str) -> list[DeviceSetting]:
     app_storage['device_settings'][device] = device_settings
     return device_settings
 
+
 def preform_scan(device_name: str, out_type: str='png') -> str:
     "Scan using device and return path."
     if not out_type in {'pnm', 'tiff', 'png', 'jpeg'}:
@@ -210,13 +242,13 @@ def preform_scan(device_name: str, out_type: str='png') -> str:
     return filename
 
 
-
 def get_tag(tag_type: str, args: Optional[dict[str, str]] = None) -> str:
     "Get HTML tag"
     tag_args = ''
     if args is not None:
         tag_args = ' '+' '.join(f'{k}="{v}"' for k, v in args.items())
     return f'<{tag_type}{tag_args}>'
+
 
 def wrap_tag(tag_type: str,
              value: str,
@@ -227,6 +259,7 @@ def wrap_tag(tag_type: str,
         value = f'\n{indent(2, value)}\n'
     start_tag = get_tag(tag_type, tag_args)
     return f'{start_tag}{value}</{tag_type}>'
+
 
 def get_template(page_name: str, body: str='') -> str:
     "Get template for page"
@@ -260,6 +293,7 @@ def get_template(page_name: str, body: str='') -> str:
   </body>
 </html>"""
 
+
 def contain_in_box(inside: str, name: Optional[str] = None) -> str:
     "Contain HTML in a box."
     if name is not None:
@@ -271,6 +305,7 @@ def contain_in_box(inside: str, name: Optional[str] = None) -> str:
             margin: 4px;">
 {indent(2, inside)}
 </div>"""[1:]
+
 
 def radio_select_dict(submit_name: str,
                       options: dict[str, str],
@@ -294,6 +329,7 @@ def radio_select_dict(submit_name: str,
         count += 1
     return '\n'.join(lines)
 
+
 def radio_select_box(submit_name: str,
                      options: dict[str, str],
                      default: Optional[str] = None,
@@ -302,10 +338,12 @@ def radio_select_box(submit_name: str,
     radios = radio_select_dict(submit_name, options, default)
     return contain_in_box('<br>\n'+radios, box_title)
 
+
 def get_list(values: list[str]) -> str:
     "Return HTML list from values"
     display = '\n'.join(wrap_tag('li', v) for v in values)
     return wrap_tag('ul', display)
+
 
 def get_form(name: str,
              contents: str,
@@ -326,6 +364,7 @@ def get_form(name: str,
         'name': name,
         'method': 'post'
     })
+
 
 @app.get('/')
 async def root_get() -> str:
@@ -368,6 +407,7 @@ async def root_get() -> str:
     
     return get_template('Request Scan', html)
 
+
 @app.post('/')
 async def root_post() -> Union[Response, wkresp]:
     "Main page post handling"
@@ -387,6 +427,7 @@ async def root_post() -> Union[Response, wkresp]:
     
     return await app.send_static_file(filename)
 
+
 @app.get('/update_scanners')
 async def update_scanners_get() -> wkresp:
     "Update scanners get handling"
@@ -394,6 +435,7 @@ async def update_scanners_get() -> wkresp:
     for device in app_storage['scanners'].values():
         get_device_settings(device)
     return app.redirect('scanners')
+
 
 @app.get('/scanners')
 async def scanners_get() -> str:
@@ -414,6 +456,7 @@ async def scanners_get() -> str:
 <a href="/update_scanners"><button>Update Scanners</button></a>
 <a href="/"><button>Scan Request</button></a>""")
 
+
 def get_setting_radio(setting: DeviceSetting) -> str:
     "Return setting radio section"
     name = setting.name.replace('-', ' ').title()
@@ -423,6 +466,7 @@ def get_setting_radio(setting: DeviceSetting) -> str:
         setting.set,
         f'{name} - {setting.desc}'
     )
+
 
 @app.get('/settings')
 async def settings_get() -> Union[wkresp, str]:
@@ -452,6 +496,7 @@ async def settings_get() -> Union[wkresp, str]:
 <a href="/scanners"><button>Scanner Settings</button></a>"""
     return get_template(scanner, html)
 
+
 @app.post('/settings')
 async def settings_post() -> Union[wkresp, str]:
     "Settings page post handling"
@@ -480,6 +525,7 @@ async def settings_post() -> Union[wkresp, str]:
     # Return to page for that scanner
     return app.redirect(request.url)
 
+
 async def serve_scanner(root_dir: str,
                         device_name: str,
                         port: int=3004,
@@ -488,14 +534,15 @@ async def serve_scanner(root_dir: str,
     
     if not ip_addr:
         ip_addr = find_ip()
-    
+        
     try:
         # Add more information about the address
         location = f'{ip_addr}:{port}'
         
         config = {
             'bind': location,
-            'worker_class': 'trio'
+            'worker_class': 'trio',
+            'errorlog': path.join(root_dir, 'log.txt'),
         }
         app.static_folder = Path(root_dir)
         app_storage['scanners'] = {}
@@ -504,14 +551,15 @@ async def serve_scanner(root_dir: str,
         
         config_obj = Config.from_mapping(config)
         
-        print(f'Serving on http://{location}')
+        print(f'Serving on http://{location}\n(CTRL + C to quit)')
         
         await serve(app, config_obj)
     except socket.error:
-        print(f"Cannot bind to IP address '{ip_addr}' port {port}")
+        log(f"Cannot bind to IP address '{ip_addr}' port {port}", 1)
         sys.exit(1)
     except KeyboardInterrupt:
         pass
+
 
 def run() -> None:
     "Run scanner server"
@@ -552,6 +600,7 @@ def run() -> None:
         print("No default device in config file. Select one from `scanimage -L`.")
     
     trio.run(serve_scanner, root_dir, target, port)
+
 
 if __name__ == '__main__':
     print(f'{__title__} v{__version__}  Copyright (C) 2022  {__author__}\n')
