@@ -11,6 +11,6 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "[pip prod]:"
-      prefix-development: "[pip dev]:"
+      prefix: "[pip prod] "
+      prefix-development: "[pip dev] "
       include: "scope"
