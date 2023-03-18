@@ -1,0 +1,61 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Request Scan</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+  </head>
+  <body>
+    <div class="content">
+      <h1>Request Scan</h1>
+      <b>Press Scan to start scanning.</b>
+      <form name="scan_request" method="post">
+        <div class="box">
+          <span>
+            Select Image format:
+          </span>
+          <br>
+          <br>
+          <input type="radio" id="img_format_0" name="img_format" value="png" checked="checked">
+          <label for="img_format_0">PNG</label>
+          <br>
+          <input type="radio" id="img_format_1" name="img_format" value="jpeg">
+          <label for="img_format_1">JPEG</label>
+          <br>
+          <input type="radio" id="img_format_2" name="img_format" value="pnm">
+          <label for="img_format_2">PNM</label>
+          <br>
+          <input type="radio" id="img_format_3" name="img_format" value="tiff">
+          <label for="img_format_3">TIFF</label>
+          <br>
+        </div>
+        <div class="box">
+          <span>
+            Select a Scanner:
+          </span>
+          <br>
+          {% for display, value in scanners.items() %}
+          <input {% if value == default %}checked="checked"{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ value }}">
+          <label for="scanner_{{ loop.index0 }}">{{ display }}</label>
+          <br>
+          {% else %}
+          <input type="radio" id="scanner_0" name="scanner" value="none" checked="checked">
+          <label for="scanner_0">None - <a href="/update_scanners">Update Devices</a></label>
+          <br>
+          {% endfor %}
+        </div>
+        <br>
+        <input type="submit" id="scan_request_submit_button" name="scan_request_submit_button" value="Scan!">
+      </form>
+      <hr>
+      <a href="/update_scanners"><button>Update Devices</button></a>
+      <a href="/scanners"><button>Scanner Settings</button></a>
+    </div>
+    <footer>
+      <i>If you're reading this, the web server was installed correctly.™</i>
+      <hr>
+      <p>Sane Scanner Web Server v2.0.0 © CoolCat467</p>
+    </footer>
+  </body>
+</html>

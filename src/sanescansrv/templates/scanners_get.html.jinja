@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Devices</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+  </head>
+  <body>
+    <div class="content">
+      <h1>Devices</h1>
+      <div class="box">
+        <span>
+          Devices:
+        </span>
+        <br>
+        <ul>
+          {% for link, disp in scanners.items() %}
+          <li><a href="{{ link }}">{{ disp }}</a></li>
+          {% else %}
+          <p>There were no devices detected. Are your device(s) turned on?</p>
+          {% endfor %}
+        </ul>
+      </div>
+      <br>
+      <a href="/"><button>
+        Scan Request
+      </button></a>
+      <a href="/update_scanners"><button>
+        Update Devices
+      </button></a>
+    </div>
+    <footer>
+      <i>If you're reading this, the web server was installed correctly.™</i>
+      <hr>
+      <p>Sane Scanner Web Server v2.0.0 © CoolCat467</p>
+    </footer>
+  </body>
+</html>

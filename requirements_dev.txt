@@ -1,0 +1,14 @@
+black==23.1.0           # must match .pre-commit-config.yaml
+flake8-bugbear==23.3.12 # must match .pre-commit-config.yaml
+flake8-noqa==1.3.0      # must match .pre-commit-config.yaml
+flake8-pyi==23.1.2      # must match .pre-commit-config.yaml
+flake8==6.0.0
+isort==5.12.0           # must match .pre-commit-config.yaml
+mypy==1.1.1
+pycln==2.1.3            # must match .pre-commit-config.yaml
+pytest-cov==4.0.0
+pytest-trio==0.8.0
+pytest==7.2.2
+tox==4.4.7
+trio-typing[mypy]==0.7.0
+pre-commit

@@ -1,0 +1,32 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ scanner }}</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+  </head>
+  <body>
+    <div class="content">
+      <h1>{{ scanner }}</h1>
+      {% if radios %}
+      <b>Settings for "{{ scanner }}":</b>
+      <form name="settings_update" method="post">
+        {{ radios }}
+        <br>
+        <input type="submit" id="settings_update_submit_button" name="settings_update_submit_button" value="Save">
+      </form>
+      {% else %}
+      <p>There are no additional settings for this scanner.</p>
+      {% endif %}
+      <hr>
+      <a href="/"><button>Scan Request</button></a>
+      <a href="/scanners"><button>Scanner Settings</button></a>
+    </div>
+    <footer>
+      <i>If you're reading this, the web server was installed correctly.™</i>
+      <hr>
+      <p>Sane Scanner Web Server v2.0.0 © CoolCat467</p>
+    </footer>
+  </body>
+</html>
