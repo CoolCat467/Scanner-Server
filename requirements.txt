@@ -2,6 +2,6 @@ Werkzeug==2.2.3
 quart==0.18.3
 quart-trio==0.10.0
 trio==0.22.0
-hypercorn==0.13.2
+hypercorn==0.14.3
 python-sane==2.9.1
 Pillow==9.4.0
