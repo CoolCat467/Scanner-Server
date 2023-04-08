@@ -18,7 +18,7 @@ Use APT or your system's equivalent to install.
 ```console
 sudo apt install libsane-dev
 git clone https://github.com/CoolCat467/Scanner-Server.git
-pip install sanescansrv
+pip install Scanner-Server/
 ```
 
 ## Run
