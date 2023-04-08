@@ -29,6 +29,7 @@ import socket
 import sys
 import time
 from configparser import ConfigParser
+from functools import partial
 from os import makedirs, path
 from pathlib import Path
 from typing import Any, AsyncIterator, Final
@@ -480,6 +481,7 @@ def run() -> None:
 
     target = "None"
     port = 3004
+    hostname = "None"
 
     rewrite = True
     if config.has_section("main"):
@@ -496,19 +498,37 @@ def run() -> None:
                 rewrite = False
         else:
             rewrite = True
+        if config.has_option("main", "hostname"):
+            hostname = config.get("main", "hostname")
+        else:
+            rewrite = True
 
     if rewrite:
         config.clear()
-        config.read_dict({"main": {"printer": target, "port": port}})
+        config.read_dict(
+            {
+                "main": {
+                    "printer": target,
+                    "port": port,
+                    "hostname": hostname,
+                }
+            }
+        )
         with open(conf_file, "w", encoding="utf-8") as config_file:
             config.write(config_file)
 
-    print(f"Default Printer: {target}\nPort: {port}\n")
+    print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}\n")
 
     if target == "None":
         print("No default device in config file.")
 
-    trio.run(serve_scanner, root_dir, target, port)
+    ip_address = None
+    if hostname != "None":
+        ip_address = hostname
+
+    trio.run(
+        partial(serve_scanner, root_dir, target, port, ip_addr=ip_address)
+    )
 
 
 def sane_run() -> None:
