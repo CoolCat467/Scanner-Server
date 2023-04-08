@@ -268,6 +268,11 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
     return settings
 
 
+def display_progress(current: int, total: int) -> None:
+    """Display progress of the active scan"""
+    print(f'{current / total * 100:.2f}%')
+
+
 def preform_scan(device_name: str, out_type: str = "png") -> str:
     "Scan using device and return path."
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
@@ -288,7 +293,7 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
                     continue
                 value = int(value)
             setattr(device, name, value)
-        with device.scan(print) as image:
+        with device.scan(display_progress) as image:
             # bounds = image.getbbox()
             image.save(filepath, out_type)
 
