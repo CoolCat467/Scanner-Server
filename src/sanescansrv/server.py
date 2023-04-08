@@ -443,14 +443,6 @@ async def serve_scanner(
         }
         app.config["SERVER_NAME"] = location
 
-        app.static_folder = Path(root_dir, "static")
-
-        app.add_url_rule(
-            "/",
-            "static",
-            app.send_static_file,
-            defaults={"filename": "index.html"},
-        )
         app.add_url_rule("/<path:filename>", "static", app.send_static_file)
 
         config_obj = Config.from_mapping(config)
