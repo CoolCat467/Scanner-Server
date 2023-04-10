@@ -31,7 +31,6 @@ import time
 from configparser import ConfigParser
 from functools import partial
 from os import makedirs, path
-from pathlib import Path
 from typing import Any, AsyncIterator, Final
 from urllib.parse import urlencode
 
@@ -270,7 +269,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
 
 def display_progress(current: int, total: int) -> None:
     """Display progress of the active scan"""
-    print(f'{current / total * 100:.2f}%')
+    print(f"{current / total * 100:.2f}%")
 
 
 def preform_scan(device_name: str, out_type: str = "png") -> str:
