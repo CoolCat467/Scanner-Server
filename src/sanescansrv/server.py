@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Scanner Web Server - Website to talk to scanimage
+# Scanner Web Server - Website to talk to SANE scanners
 
-"""Scanner Web Server - Website to talk to scanimage
+"""Scanner Web Server - Website to talk to SANE scanners
 Copyright (C) 2022  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@ from __future__ import annotations
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
 __version__ = "2.1.0"
+__license__ = "GPLv3"
 
 
 import socket
@@ -40,19 +41,19 @@ from hypercorn.config import Config
 from hypercorn.trio import serve
 from jinja2 import Template
 from quart import Response, request
-from quart.templating import render_template as quart_render_template
 from quart.templating import stream_template as quart_stream_template
 from quart_trio import QuartTrio
 from werkzeug import Response as wkresp
 
-from sanescansrv import htmlgen
+from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
 
+# For some reason error class is not exposed nicely; Let's fix that
 SaneError = sane._sane.error
-
+logger.set_title(__title__)
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
-# avalable at http://www.home.unix-ag.org/simon/woof
+# available at http://www.home.unix-ag.org/simon/woof
 # with modifications
 
 # Utility function to guess the IP (as a string) where the server can be
@@ -107,6 +108,7 @@ class DeviceSetting:
         self.title = title
         self.options = options
         self.default = default
+        self.unit = unit
         self.desc = desc
         self.set = self.default
 
@@ -117,37 +119,17 @@ class DeviceSetting:
     def __repr__(self) -> str:
         return (
             f"DeviceSetting({self.name!r}, {self.title!r}, "
-            f"{self.options!r}, {self.default!r}, {self.desc!r})"
+            f"{self.options!r}, {self.default!r}, {self.unit!r}, "
+            f"{self.desc!r})"
         )
 
 
-app: Final = QuartTrio(
+app: Final = QuartTrio(  # pylint: disable=invalid-name
     __name__,
     static_folder="static",
     template_folder="templates",
-)  # pylint: disable=invalid-name
-app_storage: Final[dict[str, Any]] = {}  # pylint: disable=invalid-name
-
-
-async def render_template(
-    template_name_or_list: str | list[str], **context: Any
-) -> str:
-    """Render the template with the context given.
-
-    Arguments:
-        template_name_or_list: Template name to render of a list of
-            possible template names.
-        context: The variables to pass to the template.
-
-    Patched to remove blank lines left by jinja statements"""
-    content = await quart_render_template(template_name_or_list, **context)
-    new_content = []
-    for line in content.splitlines():
-        new_line = line.rstrip()
-        if not new_line:
-            continue
-        new_content.append(new_line)
-    return "\n".join(new_content)
+)
+APP_STORAGE: Final[dict[str, Any]] = {}
 
 
 async def stream_template(
@@ -165,7 +147,7 @@ async def stream_template(
         context: The variables to make available in the template.
 
     Patched to remove blank lines left by jinja statements"""
-    # Generate stream in this async block before context is lost
+    # Generate stream in this async scope before context is lost
     stream = await quart_stream_template(template_name_or_list, **context)
 
     # Create async generator filter
@@ -220,7 +202,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         default = "None"
         try:
             default = str(getattr(device, option.py_name))
-        except Exception:
+        except (AttributeError, ValueError):
             pass
         unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
 
@@ -245,7 +227,7 @@ def display_progress(current: int, total: int) -> None:
 
 
 def preform_scan(device_name: str, out_type: str = "png") -> str:
-    "Scan using device and return path."
+    """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"scan.{out_type}"
@@ -255,7 +237,7 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
     ints = {"TYPE_BOOL", "TYPE_INT"}
 
     with sane.open(device_name) as device:
-        for setting in app_storage["device_settings"][device_name]:
+        for setting in APP_STORAGE["device_settings"][device_name]:
             name = setting.name.replace("-", "_")
             value: str | int = setting.set
             if sane.TYPE_STR[device[name].type] in ints:
@@ -273,16 +255,16 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
 
 @app.get("/")
 async def root_get() -> AsyncIterator[str]:
-    "Main page get request"
+    """Main page get request"""
     scanners = {}
     default = "none"
 
-    if app_storage["scanners"]:
-        scanners = {k: k for k in app_storage["scanners"]}
+    if APP_STORAGE["scanners"]:
+        scanners = {k: k for k in APP_STORAGE["scanners"]}
         # Since radio_select_dict is if comparison for
         # default, if default device does not exist
         # there simply won't be a default shown.
-        default = app_storage["default_device"]
+        default = APP_STORAGE["default_device"]
 
     return await stream_template(
         "root_get.html.jinja",
@@ -293,13 +275,13 @@ async def root_get() -> AsyncIterator[str]:
 
 @app.post("/")
 async def root_post() -> Response | wkresp:
-    "Main page post handling"
+    """Main page post handling"""
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
     # Validate input
     img_format = data.get("img_format", "png")
-    device = app_storage["scanners"].get(data.get("scanner"), "none")
+    device = APP_STORAGE["scanners"].get(data.get("scanner"), "none")
 
     if img_format not in {"pnm", "tiff", "png", "jpeg"}:
         return app.redirect("/")
@@ -313,18 +295,18 @@ async def root_post() -> Response | wkresp:
 
 @app.get("/update_scanners")
 async def update_scanners_get() -> wkresp:
-    "Update scanners get handling"
-    app_storage["scanners"] = get_devices()
-    for device in app_storage["scanners"].values():
-        app_storage["device_settings"][device] = get_device_settings(device)
+    """Update scanners get handling"""
+    APP_STORAGE["scanners"] = get_devices()
+    for device in APP_STORAGE["scanners"].values():
+        APP_STORAGE["device_settings"][device] = get_device_settings(device)
     return app.redirect("scanners")
 
 
 @app.get("/scanners")
 async def scanners_get() -> AsyncIterator[str]:
-    "Scanners page get handling"
+    """Scanners page get handling"""
     scanners = {}
-    for display in app_storage.get("scanners", {}):
+    for display in APP_STORAGE.get("scanners", {}):
         scanner_url = urlencode({"scanner": display})
         scanners[f"/settings?{scanner_url}"] = display
 
@@ -335,7 +317,7 @@ async def scanners_get() -> AsyncIterator[str]:
 
 
 def get_setting_radio(setting: DeviceSetting) -> str:
-    "Return setting radio section"
+    """Return setting radio section"""
     options = {x.title(): x for x in setting.options}
     if set(options.keys()) == {"1", "0"}:
         options = {"True": "1", "False": "0"}
@@ -346,14 +328,14 @@ def get_setting_radio(setting: DeviceSetting) -> str:
 
 @app.get("/settings")
 async def settings_get() -> AsyncIterator[str] | wkresp:
-    "Settings page get handling"
+    """Settings page get handling"""
     scanner = request.args.get("scanner", "none")
 
-    if scanner == "none" or scanner not in app_storage["scanners"]:
+    if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
         return app.redirect("/scanners")
 
-    device = app_storage["scanners"][scanner]
-    scanner_settings = app_storage["device_settings"].get(device, [])
+    device = APP_STORAGE["scanners"][scanner]
+    scanner_settings = APP_STORAGE["device_settings"].get(device, [])
 
     return await stream_template(
         "settings_get.html.jinja",
@@ -366,14 +348,14 @@ async def settings_get() -> AsyncIterator[str] | wkresp:
 
 @app.post("/settings")
 async def settings_post() -> wkresp:
-    "Settings page post handling"
+    """Settings page post handling"""
     scanner = request.args.get("scanner", "none")
 
-    if scanner == "none" or scanner not in app_storage["scanners"]:
+    if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
         return app.redirect("/scanners")
 
-    device = app_storage["scanners"][scanner]
-    scanner_settings = app_storage["device_settings"][device]
+    device = APP_STORAGE["scanners"][scanner]
+    scanner_settings = APP_STORAGE["device_settings"][device]
 
     valid_settings = {
         setting.name: idx for idx, setting in enumerate(scanner_settings)
@@ -389,7 +371,7 @@ async def settings_post() -> wkresp:
         idx = valid_settings[setting_name]
         if new_value not in scanner_settings[idx].options:
             continue
-        app_storage["device_settings"][device][idx].set = new_value
+        APP_STORAGE["device_settings"][device][idx].set = new_value
 
     # Return to page for that scanner
     return app.redirect(request.url)
@@ -423,9 +405,9 @@ async def serve_scanner(
 
         config_obj = Config.from_mapping(config)
 
-        app_storage["scanners"] = {}
-        app_storage["default_device"] = device_name
-        app_storage["device_settings"] = {}
+        APP_STORAGE["scanners"] = {}
+        APP_STORAGE["default_device"] = device_name
+        APP_STORAGE["device_settings"] = {}
 
         print(f"Serving on http://{location}\n(CTRL + C to quit)")
 
@@ -438,7 +420,7 @@ async def serve_scanner(
 
 
 def run() -> None:
-    "Run scanner server"
+    """Run scanner server"""
     root_dir = path.abspath(path.expanduser(path.join("~", ".sanescansrv")))
     if not path.exists(root_dir):
         makedirs(root_dir, exist_ok=True)
@@ -500,7 +482,7 @@ def run() -> None:
 
 
 def sane_run() -> None:
-    """Run but also handle initializing and uninitializing SANE"""
+    """Run but also handle initializing and un-initializing SANE"""
     try:
         sane.init()
         run()

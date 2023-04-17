@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanescansrv"
-version = "2.0.0"
+version = "2.1.0"
 authors = [
   { name="CoolCat467" },
 ]
@@ -55,3 +55,13 @@ warn_unused_ignores = true
 [tool.black]
 line-length = 79
 target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+combine_as_imports = true
+line_length = 79
+skip = [".git", ".github", ".venv"]
+
+[tool.pycln]
+all = true
+disable_all_dunder_policy = true
