@@ -1,4 +1,6 @@
 # Scanner-Server
+[![Tests](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml)
+
 Kind of like CUPS but it's for scanning, not printing.
 
 ![thumbnail](./img/thumbnail.png)
