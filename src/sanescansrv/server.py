@@ -22,7 +22,7 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 
 import socket
@@ -46,37 +46,9 @@ from quart_trio import QuartTrio
 from werkzeug import Response as wkresp
 
 from sanescansrv import htmlgen
+from sanescansrv.logger import log
 
 SaneError = sane._sane.error
-
-
-def log(message: str, level: int = 1, log_dir: str | None = None) -> None:
-    "Log a message to console and log file."
-    levels = ["DEBUG", "INFO", "ERROR"]
-
-    if log_dir is None:
-        # log_dir = path.join(path.dirname(__file__), "logs")
-        log_dir = path.abspath(
-            path.expanduser(path.join("~", ".sanescansrv", "logs"))
-        )
-    if not path.exists(log_dir):
-        makedirs(log_dir, exist_ok=True)
-    filename = time.strftime("log_%Y_%m_%d.log")
-    log_file = path.join(log_dir, filename)
-
-    log_level = levels[min(max(0, level), len(levels) - 1)]
-    log_time = time.asctime()
-    log_message_text = message.encode("unicode_escape").decode("utf-8")
-
-    log_msg = f"[{__title__}] [{log_time}] [{log_level}] {log_message_text}"
-
-    if not path.exists(log_file):
-        with open(log_file, mode="w", encoding="utf-8") as file:
-            file.close()
-    with open(log_file, mode="a", encoding="utf-8") as file:
-        file.write(f"{log_msg}\n")
-        file.close()
-    print(log_msg)
 
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
