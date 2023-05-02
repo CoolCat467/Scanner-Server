@@ -104,6 +104,27 @@ def test_wrap_tag(
     assert htmlgen.wrap_tag(type_, value, block, **args) == expect
 
 
+def test_wrap_comment() -> None:
+    assert (
+        htmlgen.wrap_comment("this is comment")
+        == """<!--
+this is comment
+-->"""
+    )
+
+
+def test_wrap_comment_inline() -> None:
+    assert (
+        htmlgen.wrap_comment("smol comment", inline=True)
+        == "<!--smol comment-->"
+    )
+
+
+def test_wrap_comment_avoid_hacks() -> None:
+    with pytest.raises(ValueError):
+        htmlgen.wrap_comment("-->haha now javascript hax you", inline=True)
+
+
 def test_template() -> None:
     assert (
         htmlgen.template(

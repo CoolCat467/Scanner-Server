@@ -111,6 +111,18 @@ def wrap_tag(
     return f"{start_tag}{value}</{type_}>"
 
 
+def wrap_comment(text: str, /, inline: bool = False) -> str:
+    """Wrap text in comment block
+
+    If inline, comment does not have linebreaks before and after text"""
+    if not inline and text:
+        text = f"\n{text}\n"
+    if "-->" in text:
+        raise ValueError("Attempted comment escape")
+    escaped_text = text.replace("-->", "")
+    return f"<!--{escaped_text}-->"
+
+
 def template(
     title: str,
     body: str,
