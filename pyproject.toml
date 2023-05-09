@@ -11,13 +11,44 @@ authors = [
 description = "Mypy extension for Python IDLE"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
 keywords = ["scanner", "sane", "server", "frontend"]
+dependencies = [
+    "hypercorn[trio]~=0.14.3",
+    "Pillow~=9.5.0",
+    "python-sane~=2.9.1",
+    "quart~=0.18.4",
+    "quart-trio~=0.10.0",
+    "trio~=0.22.0",
+    "Werkzeug~=2.3.3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy~=1.2.0",              # must match .pre-commit-config.yaml
+    "pre-commit",
+    "pre-commit-hooks~=4.4.0",  # must match .pre-commit-config.yaml
+    "tox~=4.5.1",
+    "trio-typing[mypy]~=0.8.0",
+]
+format = [
+    "black~=23.3.0",            # must match .pre-commit-config.yaml
+    "isort~=5.12.0",            # must match .pre-commit-config.yaml
+    "pycln~=2.1.3",             # must match .pre-commit-config.yaml
+]
+tests = [
+    "flake8~=6.0.0",            # must match .pre-commit-config.yaml
+    "flake8-bugbear~=23.3.23",  # must match .pre-commit-config.yaml
+    "flake8-noqa~=1.3.1",       # must match .pre-commit-config.yaml
+    "pytest~=7.3.1",
+    "pytest-cov~=4.0.0",
+    "pytest-trio~=0.8.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/CoolCat467/Scanner-Server"
@@ -66,3 +97,60 @@ skip = [".git", ".github", ".venv"]
 [tool.pycln]
 all = true
 disable_all_dunder_policy = true
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    minversion = 3.11.0
+    envlist = py311, pycln, black, isort, pytest, flake8, mypy
+    isolated_build = false
+
+    [gh-actions]
+    python =
+        3.11: py311, pytest, flake8, mypy
+
+    [testenv]
+    basepython = python3.11
+    setenv =
+        PYTHONPATH = {toxinidir}
+
+    [testenv:pytest]
+    deps =
+        pytest
+        pytest-cov
+        pytest-trio
+    commands = pytest --basetemp={envtmpdir}
+
+    [testenv:flake8]
+    deps =
+        flake8
+        flake8-bugbear
+        flake8-noqa
+    commands = flake8 src tests
+
+    [testenv:mypy]
+    deps =
+        mypy
+        trio-typing[mypy]
+    commands = mypy src
+
+    [format]
+    basepython = python3.11
+    setenv =
+        PYTHONPATH = {toxinidir}
+
+    [format:pycln]
+    deps =
+        pycln
+    commands = pycln src tests
+
+    [format:black]
+    deps =
+        black
+    commands = black src tests
+
+    [format:isort]
+    deps =
+        isort
+    commands = isort src tests
+"""

@@ -25,6 +25,7 @@ def save_template(name: str, content: str) -> None:
     template_path = TEMPLATE_FOLDER / f"{name}.html.jinja"
     with open(template_path, "w", encoding="utf-8") as template_file:
         template_file.write(content)
+        template_file.write("\n")
     print(f"Saved content to {template_path}")
 
 
@@ -34,6 +35,7 @@ def save_static(filename: str, content: str) -> None:
     static_path = STATIC_FOLDER / filename
     with open(static_path, "w", encoding="utf-8") as static_file:
         static_file.write(content)
+        static_file.write("\n")
     print(f"Saved content to {static_path}")
 
 
