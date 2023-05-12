@@ -18,8 +18,7 @@ Use APT or your system's equivalent to install.
 ## Installation
 ```console
 sudo apt-get install libsane-dev
-git clone https://github.com/CoolCat467/Scanner-Server.git
-pip install Scanner-Server/
+pip install git+https://github.com/CoolCat467/Scanner-Server.git
 ```
 
 ## Run

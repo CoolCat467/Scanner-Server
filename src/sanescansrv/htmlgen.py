@@ -374,7 +374,12 @@ def jinja_for_loop(
 ) -> str:
     """Generate jinja for loop block
 
-    Ends up being `for {results} in {iterate}`"""
+    Ends up being something like:
+    for {results} in {iterate} [if {filter_}]:
+        {content}
+    else: # If no results that matched filter
+        {else_content}
+    """
     result_items = ", ".join(results)
     filter_items = ""
     if filter_:
