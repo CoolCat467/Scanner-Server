@@ -3,8 +3,8 @@ repos:
     rev: v4.4.0 # must match requirements_dev.txt
     hooks:
       - id: trailing-whitespace
-      - id: requirements-txt-fixer
       - id: end-of-file-fixer
+      - id: check-ast
       - id: check-yaml
       - id: check-toml
       - id: check-merge-conflict
