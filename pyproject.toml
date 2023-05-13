@@ -59,7 +59,7 @@ tests = [
 sanescansrv = "sanescansrv:run"
 
 [tool.setuptools.package-data]
-sanescansrv = ["templates/*", "static/*"]
+sanescansrv = ["py.typed", "templates/*", "static/*"]
 
 [tool.pytest.ini_options]
 addopts = "--cov-report term-missing --cov=sanescansrv"
