@@ -39,9 +39,8 @@ import sane
 import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
-from jinja2 import Template
 from quart import Response, request
-from quart.templating import stream_template as quart_stream_template
+from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug import Response as wkresp
 
@@ -51,6 +50,25 @@ from sanescansrv.logger import log
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError = sane._sane.error
 logger.set_title(__title__)
+
+SANE_INITIALIZED = False
+
+
+def stop_sane() -> None:
+    """Exit SANE if started while also updating SANE_INITIALIZED global"""
+    global SANE_INITIALIZED
+    if SANE_INITIALIZED:
+        sane.exit()
+    SANE_INITIALIZED = False
+
+
+def restart_sane() -> None:
+    """Start or restart SANE"""
+    global SANE_INITIALIZED
+    stop_sane()
+    sane.init()
+    SANE_INITIALIZED = True
+
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
 # available at http://www.home.unix-ag.org/simon/woof
@@ -84,10 +102,11 @@ def find_ip() -> str:
 
 def get_devices() -> dict[str, str]:
     "Return dict of SANE name to device"
+    restart_sane()
     # Model name : Device
     devices: dict[str, str] = {}
-    for device in sane.get_devices():
-        devices[device[2]] = device[0]
+    for device_name, _vendor, model, _type in sane.get_devices(localOnly=True):
+        devices[model] = device_name
     return devices
 
 
@@ -130,35 +149,6 @@ app: Final = QuartTrio(  # pylint: disable=invalid-name
     template_folder="templates",
 )
 APP_STORAGE: Final[dict[str, Any]] = {}
-
-
-async def stream_template(
-    template_name_or_list: str | Template | list[str | Template],
-    **context: Any,
-) -> AsyncIterator[str]:
-    """Render a template by name with the given context as a stream.
-
-    This returns an iterator of strings, which can be used as a
-    streaming response from a view.
-
-    Arguments:
-        template_name_or_list: The name of the template to render. If a
-            list is given, the first name to exist will be rendered.
-        context: The variables to make available in the template.
-
-    Patched to remove blank lines left by jinja statements"""
-    # Generate stream in this async scope before context is lost
-    stream = await quart_stream_template(template_name_or_list, **context)
-
-    # Create async generator filter
-    async def generate() -> AsyncIterator[str]:
-        async for chunk in stream:
-            for line in chunk.splitlines(True):
-                if not line.rstrip():
-                    continue
-                yield line
-
-    return generate()
 
 
 def get_device_settings(device_addr: str) -> list[DeviceSetting]:
@@ -401,6 +391,11 @@ async def serve_scanner(
         }
         app.config["SERVER_NAME"] = location
 
+        app.jinja_options = {
+            "trim_blocks": True,
+            "lstrip_blocks": True,
+        }
+
         app.add_url_rule("/<path:filename>", "static", app.send_static_file)
 
         config_obj = Config.from_mapping(config)
@@ -484,10 +479,9 @@ def run() -> None:
 def sane_run() -> None:
     """Run but also handle initializing and un-initializing SANE"""
     try:
-        sane.init()
         run()
     finally:
-        sane.exit()
+        stop_sane()
 
 
 if __name__ == "__main__":
