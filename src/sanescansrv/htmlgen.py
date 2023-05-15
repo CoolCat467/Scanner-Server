@@ -466,3 +466,49 @@ def jinja_bullet_list(
             else_content=else_content,
         ),
     )
+
+
+def jinja_block(
+    title: str,
+    content: str,
+    scoped: bool = False,
+    required: bool = False,
+    block: bool = True,
+) -> str:
+    """Wrap content in jinja block named {title}
+
+    If block is True, put start block and end block
+    expressions on lines of their own, otherwise leave
+    everything on the same line."""
+    if " " in title or not title:
+        raise ValueError("Title must not contain spaces and must not be blank")
+
+    join = "\n" if block else ""
+    extra_tags = []
+    if scoped:
+        extra_tags.append("scoped")
+    if required:
+        extra_tags.append("required")
+    tag_data = " " + " ".join(extra_tags) if extra_tags else ""
+    # Title not required for endblock statement but nice for readability
+    return join.join(
+        (
+            jinja_statement(f"block {title}{tag_data}"),
+            content,
+            jinja_statement(f"endblock {title}"),
+        )
+    )
+
+
+def jinja_extends(template_filename: str | Iterable[str]) -> str:
+    """Return jinja extends statement from given template filename"""
+    if isinstance(template_filename, str):
+        filename = template_filename
+    else:
+        filename = "/".join(template_filename)
+    return jinja_statement(f'extends "{filename}"')
+
+
+def jinja_super_block() -> str:
+    """Return jinja super() expression"""
+    return jinja_expression("super()")

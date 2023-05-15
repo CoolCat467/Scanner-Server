@@ -501,3 +501,98 @@ def test_jinja_bullet_list() -> None:
   {% endfor %}
 </ul>"""
     )
+
+
+def test_jinja_block() -> None:
+    assert (
+        htmlgen.jinja_block(
+            "title_here",
+            "hallos content",
+        )
+        == """{% block title_here %}
+hallos content
+{% endblock title_here %}"""
+    )
+
+
+def test_jinja_block_invalid_title() -> None:
+    with pytest.raises(ValueError):
+        htmlgen.jinja_block("name with spaces", "content")
+
+
+def test_jinja_block_invalid_blank_title() -> None:
+    with pytest.raises(ValueError):
+        htmlgen.jinja_block("", "content")
+
+
+def test_jinja_block_scoped() -> None:
+    assert (
+        htmlgen.jinja_block(
+            "title_here",
+            "hallos content",
+            scoped=True,
+        )
+        == """{% block title_here scoped %}
+hallos content
+{% endblock title_here %}"""
+    )
+
+
+def test_jinja_block_required() -> None:
+    assert (
+        htmlgen.jinja_block(
+            "title_here",
+            "hallos content",
+            required=True,
+        )
+        == """{% block title_here required %}
+hallos content
+{% endblock title_here %}"""
+    )
+
+
+def test_jinja_block_required_scoped() -> None:
+    assert (
+        htmlgen.jinja_block(
+            "title_here",
+            "hallos content",
+            required=True,
+            scoped=True,
+        )
+        == """{% block title_here scoped required %}
+hallos content
+{% endblock title_here %}"""
+    )
+
+
+def test_jinja_block_inline() -> None:
+    assert (
+        htmlgen.jinja_block(
+            "title_here",
+            "hallos content",
+            block=False,
+        )
+        == """{% block title_here %}hallos content{% endblock title_here %}"""
+    )
+
+
+def test_jinja_extends() -> None:
+    assert (
+        htmlgen.jinja_extends(
+            "template_filename",
+        )
+        == '{% extends "template_filename" %}'
+    )
+
+
+def test_jinja_extends_path() -> None:
+    assert (
+        htmlgen.jinja_extends(
+            ("templates", "settings", "change_username.html.jinja")
+        )
+        == '{% extends "templates/settings/change_username.html.jinja" %}'
+    )
+
+
+def test_jinja_super_block() -> None:
+    assert htmlgen.jinja_super_block() == "{{ super() }}"
