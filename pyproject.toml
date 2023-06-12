@@ -33,7 +33,7 @@ dev = [
     "mypy~=1.3.0",              # must match .pre-commit-config.yaml
     "pre-commit",
     "pre-commit-hooks~=4.4.0",  # must match .pre-commit-config.yaml
-    "tox~=4.5.1",
+    "tox~=4.6.0",
     "trio-typing[mypy]~=0.8.0",
 ]
 format = [
