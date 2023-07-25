@@ -22,7 +22,7 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.1.2"
+__version__ = "2.1.3"
 __license__ = "GPLv3"
 
 
