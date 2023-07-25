@@ -6,6 +6,8 @@
 
 # Programmed by CoolCat467
 
+from __future__ import annotations
+
 __title__ = "Logging"
 __author__ = "CoolCat467"
 
