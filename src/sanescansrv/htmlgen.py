@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterable
+from typing import Union
 
 
 def indent(level: int, text: str) -> str:
@@ -17,7 +18,7 @@ def deindent(level: int, text: str) -> str:
     return "\n".join(line.removeprefix(prefix) for line in text.splitlines())
 
 
-TagArg = str | int | float | bool
+TagArg = Union[str, int, float, bool]
 
 
 def _quote_strings(values: Iterable[TagArg]) -> Generator[str, None, None]:
