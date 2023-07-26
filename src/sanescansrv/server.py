@@ -30,9 +30,10 @@ import sys
 import time
 from collections.abc import AsyncIterator
 from configparser import ConfigParser
+from dataclasses import dataclass
 from functools import partial
 from os import makedirs, path
-from typing import Any, Final, TypedDict
+from typing import Any, Final
 from urllib.parse import urlencode
 
 import sane
@@ -110,7 +111,8 @@ def get_devices() -> dict[str, str]:
     return devices
 
 
-class DeviceSetting(TypedDict):
+@dataclass
+class DeviceSetting:
     """Setting for device."""
 
     name: str
@@ -119,7 +121,7 @@ class DeviceSetting(TypedDict):
     default: str
     unit: str
     desc: str
-    set: str | None = None
+    set: str | None = None  # noqa: A003  # Attribute shadows builtin
 
     def as_argument(self) -> str:
         """Return setting as argument."""
