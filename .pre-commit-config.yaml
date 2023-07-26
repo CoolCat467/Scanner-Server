@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0 # must match requirements_dev.txt
+    rev: v4.4.0 # must match pyproject.toml
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -11,32 +11,23 @@ repos:
       - id: mixed-line-ending
       - id: check-case-conflict
   - repo: https://github.com/hadialqattan/pycln
-    rev: v2.1.6 # must match requirements_dev.txt
+    rev: v2.1.6 # must match pyproject.toml
     hooks:
       - id: pycln
         args: [--config=pyproject.toml, src]
         types: [file]
         types_or: [python, pyi]
   - repo: https://github.com/psf/black
-    rev: 23.7.0 # must match requirements_dev.txt
+    rev: 23.7.0 # must match pyproject.toml
     hooks:
       - id: black
         language_version: python3.11
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0 # must match requirements_dev.txt
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.280 # must match pyproject.toml
     hooks:
-      - id: isort
-        name: isort (python)
-        args: ["--profile", "black", "--filter-files"]
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0 # must match requirements_dev.txt
-    hooks:
-      - id: flake8
-        additional_dependencies:
-          - "flake8-bugbear==23.5.9" # must match requirements_dev.txt
-          - "flake8-noqa==1.3.1" # must match requirements_dev.txt
+      - id: ruff
         types: [file]
-        types_or: [python, pyi]
+        types_or: [python, pyi, toml]
 
 ci:
   autofix_commit_msg: "[pre-commit.ci] auto fixes from pre-commit.com hooks"

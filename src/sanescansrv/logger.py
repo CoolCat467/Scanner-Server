@@ -1,8 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Logging - Simple logging to both console and log files
-
-"Simple logging"
+"""Simple logging to both console and log files."""
 
 # Programmed by CoolCat467
 
@@ -19,7 +15,7 @@ PROGRAM_TITLE: str = __title__
 
 
 def set_title(title: str) -> None:
-    """Set program title"""
+    """Set program title."""
     global PROGRAM_TITLE
     PROGRAM_TITLE = title
 
@@ -31,7 +27,7 @@ def log(message: str, level: int = 1, log_dir: str | None = None) -> None:
     if log_dir is None:
         # log_dir = path.join(path.dirname(__file__), "logs")
         log_dir = path.abspath(
-            path.expanduser(path.join("~", ".sanescansrv", "logs"))
+            path.expanduser(path.join("~", ".sanescansrv", "logs")),
         )
     if not path.exists(log_dir):
         makedirs(log_dir, exist_ok=True)

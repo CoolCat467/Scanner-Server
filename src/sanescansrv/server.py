@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# Scanner Web Server - Website to talk to SANE scanners
+"""Scanner Web Server - Website to talk to SANE scanners.
 
-"""Scanner Web Server - Website to talk to SANE scanners
 Copyright (C) 2022  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
@@ -16,7 +13,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>."""
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
 from __future__ import annotations
 
@@ -26,13 +24,15 @@ __version__ = "2.1.3"
 __license__ = "GPLv3"
 
 
+import contextlib
 import socket
 import sys
 import time
+from collections.abc import AsyncIterator
 from configparser import ConfigParser
 from functools import partial
 from os import makedirs, path
-from typing import Any, AsyncIterator, Final
+from typing import Any, Final, TypedDict
 from urllib.parse import urlencode
 
 import sane
@@ -42,7 +42,7 @@ from hypercorn.trio import serve
 from quart import Response, request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
-from werkzeug import Response as wkresp
+from werkzeug import Response as WerkzeugResponse
 
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
@@ -55,7 +55,7 @@ SANE_INITIALIZED = False
 
 
 def stop_sane() -> None:
-    """Exit SANE if started while also updating SANE_INITIALIZED global"""
+    """Exit SANE if started while also updating SANE_INITIALIZED global."""
     global SANE_INITIALIZED
     if SANE_INITIALIZED:
         sane.exit()
@@ -63,7 +63,7 @@ def stop_sane() -> None:
 
 
 def restart_sane() -> None:
-    """Start or restart SANE"""
+    """Start or restart SANE."""
     global SANE_INITIALIZED
     stop_sane()
     sane.init()
@@ -79,7 +79,7 @@ def restart_sane() -> None:
 
 
 def find_ip() -> str:
-    """Guess the IP where the server can be found from the network"""
+    """Guess the IP where the server can be found from the network."""
     # we get a UDP-socket for the TEST-networks reserved by IANA.
     # It is highly unlikely, that there is special routing used
     # for these networks, hence the socket later should give us
@@ -101,7 +101,7 @@ def find_ip() -> str:
 
 
 def get_devices() -> dict[str, str]:
-    "Return dict of SANE name to device"
+    """Return dict of SANE name to device."""
     restart_sane()
     # Model name : Device
     devices: dict[str, str] = {}
@@ -110,37 +110,20 @@ def get_devices() -> dict[str, str]:
     return devices
 
 
-class DeviceSetting:
-    "Setting for device"
-    __slots__ = ("name", "title", "options", "default", "unit", "desc", "set")
+class DeviceSetting(TypedDict):
+    """Setting for device."""
 
-    def __init__(
-        self,
-        name: str,
-        title: str,
-        options: list[str],
-        default: str,
-        unit: str,
-        desc: str,
-    ) -> None:
-        self.name = name
-        self.title = title
-        self.options = options
-        self.default = default
-        self.unit = unit
-        self.desc = desc
-        self.set = self.default
+    name: str
+    title: str
+    options: list[str]
+    default: str
+    unit: str
+    desc: str
+    set: str | None = None
 
     def as_argument(self) -> str:
-        "Return setting as argument"
-        return f"--{self.name}={self.set}"
-
-    def __repr__(self) -> str:
-        return (
-            f"DeviceSetting({self.name!r}, {self.title!r}, "
-            f"{self.options!r}, {self.default!r}, {self.unit!r}, "
-            f"{self.desc!r})"
-        )
+        """Return setting as argument."""
+        return f"--{self.name}={self.set if self.set is not None else self.default}"
 
 
 app: Final = QuartTrio(  # pylint: disable=invalid-name
@@ -152,7 +135,7 @@ APP_STORAGE: Final[dict[str, Any]] = {}
 
 
 def get_device_settings(device_addr: str) -> list[DeviceSetting]:
-    "Get device settings."
+    """Get device settings."""
     settings: list[DeviceSetting] = []
 
     try:
@@ -190,10 +173,9 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
             continue
 
         default = "None"
-        try:
+        with contextlib.suppress(AttributeError, ValueError):
             default = str(getattr(device, option.py_name))
-        except (AttributeError, ValueError):
-            pass
+
         unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
 
         settings.append(
@@ -204,7 +186,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 default,
                 unit,
                 option.desc,
-            )
+            ),
         )
 
     device.close()
@@ -212,7 +194,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
 
 
 def display_progress(current: int, total: int) -> None:
-    """Display progress of the active scan"""
+    """Display progress of the active scan."""
     print(f"{current / total * 100:.2f}%")
 
 
@@ -245,7 +227,7 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
 
 @app.get("/")
 async def root_get() -> AsyncIterator[str]:
-    """Main page get request"""
+    """Main page get request."""
     scanners = {}
     default = "none"
 
@@ -264,8 +246,8 @@ async def root_get() -> AsyncIterator[str]:
 
 
 @app.post("/")
-async def root_post() -> Response | wkresp:
-    """Main page post handling"""
+async def root_post() -> Response | WerkzeugResponse:
+    """Main page post handling."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
@@ -284,8 +266,8 @@ async def root_post() -> Response | wkresp:
 
 
 @app.get("/update_scanners")
-async def update_scanners_get() -> wkresp:
-    """Update scanners get handling"""
+async def update_scanners_get() -> WerkzeugResponse:
+    """Update scanners get handling."""
     APP_STORAGE["scanners"] = get_devices()
     for device in APP_STORAGE["scanners"].values():
         APP_STORAGE["device_settings"][device] = get_device_settings(device)
@@ -294,7 +276,7 @@ async def update_scanners_get() -> wkresp:
 
 @app.get("/scanners")
 async def scanners_get() -> AsyncIterator[str]:
-    """Scanners page get handling"""
+    """Scanners page get handling."""
     scanners = {}
     for display in APP_STORAGE.get("scanners", {}):
         scanner_url = urlencode({"scanner": display})
@@ -307,18 +289,21 @@ async def scanners_get() -> AsyncIterator[str]:
 
 
 def get_setting_radio(setting: DeviceSetting) -> str:
-    """Return setting radio section"""
+    """Return setting radio section."""
     options = {x.title(): x for x in setting.options}
     if set(options.keys()) == {"1", "0"}:
         options = {"True": "1", "False": "0"}
     return htmlgen.radio_select_box(
-        setting.name, options, setting.set, f"{setting.title} - {setting.desc}"
+        setting.name,
+        options,
+        setting.set,
+        f"{setting.title} - {setting.desc}",
     )
 
 
 @app.get("/settings")
-async def settings_get() -> AsyncIterator[str] | wkresp:
-    """Settings page get handling"""
+async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
+    """Settings page get handling."""
     scanner = request.args.get("scanner", "none")
 
     if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
@@ -337,8 +322,8 @@ async def settings_get() -> AsyncIterator[str] | wkresp:
 
 
 @app.post("/settings")
-async def settings_post() -> wkresp:
-    """Settings page post handling"""
+async def settings_post() -> WerkzeugResponse:
+    """Settings page post handling."""
     scanner = request.args.get("scanner", "none")
 
     if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
@@ -374,7 +359,7 @@ async def serve_scanner(
     *,
     ip_addr: str | None = None,
 ) -> None:
-    """Asynchronous Entry Point"""
+    """Asynchronous Entry Point."""
     if not ip_addr:
         ip_addr = find_ip()
 
@@ -386,7 +371,9 @@ async def serve_scanner(
             "bind": [location],
             "worker_class": "trio",
             "errorlog": path.join(
-                root_dir, "logs", time.strftime("log_%Y_%m_%d.log")
+                root_dir,
+                "logs",
+                time.strftime("log_%Y_%m_%d.log"),
             ),
         }
         app.config["SERVER_NAME"] = location
@@ -407,7 +394,7 @@ async def serve_scanner(
         print(f"Serving on http://{location}\n(CTRL + C to quit)")
 
         await serve(app, config_obj)
-    except socket.error:
+    except OSError:
         log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
         sys.exit(1)
     except KeyboardInterrupt:
@@ -415,7 +402,7 @@ async def serve_scanner(
 
 
 def run() -> None:
-    """Run scanner server"""
+    """Run scanner server."""
     root_dir = path.abspath(path.expanduser(path.join("~", ".sanescansrv")))
     if not path.exists(root_dir):
         makedirs(root_dir, exist_ok=True)
@@ -456,8 +443,8 @@ def run() -> None:
                     "printer": target,
                     "port": port,
                     "hostname": hostname,
-                }
-            }
+                },
+            },
         )
         with open(conf_file, "w", encoding="utf-8") as config_file:
             config.write(config_file)
@@ -472,12 +459,12 @@ def run() -> None:
         ip_address = hostname
 
     trio.run(
-        partial(serve_scanner, root_dir, target, port, ip_addr=ip_address)
+        partial(serve_scanner, root_dir, target, port, ip_addr=ip_address),
     )
 
 
 def sane_run() -> None:
-    """Run but also handle initializing and un-initializing SANE"""
+    """Run but also handle initializing and un-initializing SANE."""
     try:
         run()
     finally:

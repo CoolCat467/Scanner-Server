@@ -1,3 +1,5 @@
+"""Sane Scanner Server."""
+
 from sanescansrv.server import (
     __author__,
     __title__,

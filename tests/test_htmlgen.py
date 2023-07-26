@@ -1,5 +1,6 @@
-import pytest
+from __future__ import annotations
 
+import pytest
 from sanescansrv import htmlgen
 
 
@@ -63,8 +64,8 @@ def test_css_multi() -> None:
 
 
 @pytest.mark.parametrize(
-    "type_,args,expect",
-    (
+    ("type_", "args", "expect"),
+    [
         ("p", {}, "<p>"),
         ("p", {"fish": "false"}, '<p fish="false">'),
         ("i", {}, "<i>"),
@@ -73,14 +74,14 @@ def test_css_multi() -> None:
             {"type": "radio", "id": "0", "name": "test", "value_": "Example"},
             '<input type="radio" id="0" name="test" value="Example">',
         ),
-    ),
+    ],
 )
 def test_tag(type_: str, args: dict[str, str], expect: str) -> None:
     assert htmlgen.tag(type_, **args) == expect
 
 
 @pytest.mark.parametrize(
-    "type_,value,block,args,expect",
+    ("type_", "value", "block", "args", "expect"),
     [
         ("p", "value", False, {}, "<p>value</p>"),
         ("p", "fish", False, {"fish": "false"}, '<p fish="false">fish</p>'),
@@ -121,7 +122,7 @@ def test_wrap_comment_inline() -> None:
 
 
 def test_wrap_comment_avoid_hacks() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Attempted comment escape"):
         htmlgen.wrap_comment("-->haha now javascript hax you", inline=True)
 
 
@@ -205,7 +206,9 @@ def test_radio_select_dict() -> None:
 def test_radio_select_dict_lots_default() -> None:
     assert (
         htmlgen.radio_select_dict(
-            "name_here", {"cat": "0", "fish": "1", "four": "3"}, default="0"
+            "name_here",
+            {"cat": "0", "fish": "1", "four": "3"},
+            default="0",
         )
         == """<input type="radio" id="name_here_0" name="name_here" value="0" checked="checked">
 <label for="name_here_0">cat</label>
@@ -222,7 +225,9 @@ def test_radio_select_dict_lots_default() -> None:
 def test_radio_select_box() -> None:
     assert (
         htmlgen.radio_select_box(
-            "name_here", {"cat": "seven"}, box_title="click to add title"
+            "name_here",
+            {"cat": "seven"},
+            box_title="click to add title",
         )
         == """<div class="box">
   <span>
@@ -256,7 +261,10 @@ def test_input_field_with_type() -> None:
 def test_input_field_attrs() -> None:
     assert (
         htmlgen.input_field(
-            "<id>", "woot", field_type="types woo", attrs={"autoselect": ""}
+            "<id>",
+            "woot",
+            field_type="types woo",
+            attrs={"autoselect": ""},
         )
         == """<label for="<id>">woot</label>
 <input type="types woo" id="<id>" name="<id>" autoselect="">"""
@@ -264,7 +272,10 @@ def test_input_field_attrs() -> None:
 
 
 def test_input_field_exception() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Attribute 'id' conflicts with an internal attribute",
+    ):
         htmlgen.input_field(
             "field_id",
             "title",
@@ -304,7 +315,10 @@ def test_link_list() -> None:
 def test_form() -> None:
     assert (
         htmlgen.form(
-            "form_id", "dis content woo", "hihi", "click to add title"
+            "form_id",
+            "dis content woo",
+            "hihi",
+            "click to add title",
         )
         == """<b>click to add title</b>
 <form name="form_id" method="post">
@@ -346,7 +360,7 @@ def test_jinja_if_block() -> None:
                 'name == "fish"': "hallos fish",
                 "name in users": "hallos user",
                 "": "yay newfrien",
-            }
+            },
         )
         == """{% if name == "cat" %}
 Hallos cat
@@ -361,22 +375,28 @@ yay newfrien
 
 
 def test_jinja_if_block_after_else_exception() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Found condition after else block defined",
+    ):
         htmlgen.jinja_if_block(
             {
                 'name == "cat"': "Hallos cat",
                 "": "yay newfrien",
                 'name == "fish"': "hallos fish",
-            }
+            },
         )
 
 
 def test_jinja_if_block_no_if_for_else_exception() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="There must be at least one condition for there to be an else block",
+    ):
         htmlgen.jinja_if_block(
             {
                 "": "yay newfrien",
-            }
+            },
         )
 
 
@@ -425,8 +445,8 @@ There are no cat elements
 
 
 @pytest.mark.parametrize(
-    "type_,props,args,expect",
-    (
+    ("type_", "props", "args", "expect"),
+    [
         ("p", ("jinja",), {}, "<p jinja>"),
         ("p", (), {"fish": "false"}, '<p fish="false">'),
         ("p", ("jinja",), {"fish": "false"}, '<p jinja fish="false">'),
@@ -443,10 +463,13 @@ There are no cat elements
             {"type": "radio", "id": "0", "name": "test", "value_": "Example"},
             '<input jinja type="radio" id="0" name="test" value="Example">',
         ),
-    ),
+    ],
 )
 def test_jinja_arg_tag(
-    type_: str, props: tuple[str, ...], args: dict[str, str], expect: str
+    type_: str,
+    props: tuple[str, ...],
+    args: dict[str, str],
+    expect: str,
 ) -> None:
     assert htmlgen.jinja_arg_tag(type_, props, **args) == expect
 
@@ -476,7 +499,9 @@ def test_jinja_radio_select_default() -> None:
 def test_jinja_radio_select_else_content() -> None:
     assert (
         htmlgen.jinja_radio_select(
-            "submits", "option_data", else_content="default text"
+            "submits",
+            "option_data",
+            else_content="default text",
         )
         == """{% for display, value in option_data.items() %}
 <input type="radio" id="submits_{{ loop.index0 }}" name="submits" value="{{ value }}">
@@ -516,12 +541,18 @@ hallos content
 
 
 def test_jinja_block_invalid_title() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Title must not contain spaces and must not be blank",
+    ):
         htmlgen.jinja_block("name with spaces", "content")
 
 
 def test_jinja_block_invalid_blank_title() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Title must not contain spaces and must not be blank",
+    ):
         htmlgen.jinja_block("", "content")
 
 
@@ -588,7 +619,7 @@ def test_jinja_extends() -> None:
 def test_jinja_extends_path() -> None:
     assert (
         htmlgen.jinja_extends(
-            ("templates", "settings", "change_username.html.jinja")
+            ("templates", "settings", "change_username.html.jinja"),
         )
         == '{% extends "templates/settings/change_username.html.jinja" %}'
     )

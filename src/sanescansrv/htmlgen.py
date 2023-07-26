@@ -1,4 +1,4 @@
-"""HTML Generation - Generate HTML & CSS programatically"""
+"""HTML Generation - Generate HTML & CSS programatically."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ TagArg = Union[str, int, float, bool]
 
 
 def _quote_strings(values: Iterable[TagArg]) -> Generator[str, None, None]:
-    """Wrap string arguments with spaces in quotes"""
+    """Wrap string arguments with spaces in quotes."""
     for value in values:
         if isinstance(value, str) and " " in value:
             yield f'"{value}"'
@@ -34,36 +34,35 @@ def _key_to_html_property(key: str) -> str:
     """Convert a key to an HTML property.
 
     This function takes a string `key` and returns a modified version
-    of the string that can be used as an HTML property in an HTML tag."""
+    of the string that can be used as an HTML property in an HTML tag.
+    """
     return key.removesuffix("_").replace("_", "-")
 
 
 def _generate_css_declarations(
-    properties: dict[str, TagArg | list[TagArg] | tuple[TagArg, ...]]
+    properties: dict[str, TagArg | list[TagArg] | tuple[TagArg, ...]],
 ) -> Generator[str, None, None]:
-    """Yield declarations"""
+    """Yield declarations."""
     for key, values in properties.items():
         property_ = _key_to_html_property(key)
-        if isinstance(values, (list, tuple)):
-            wrap = values
-        else:
-            wrap = (values,)
+        wrap = values if isinstance(values, list | tuple) else (values,)
         value = " ".join(_quote_strings(wrap))
         yield f"{property_}: {value}"
 
 
 def css_style(
-    **kwargs: TagArg | list[TagArg] | tuple[TagArg, ...]
+    **kwargs: TagArg | list[TagArg] | tuple[TagArg, ...],
 ) -> list[str]:
-    """Return CSS style data"""
+    """Return CSS style data."""
     return [f"{prop};" for prop in _generate_css_declarations(kwargs)]
 
 
 def css_block(
-    selector: str | list[str] | tuple[str, ...], content: str
+    selector: str | list[str] | tuple[str, ...],
+    content: str,
 ) -> str:
-    """Return CSS block"""
-    if isinstance(selector, (list, tuple)):
+    """Return CSS block."""
+    if isinstance(selector, list | tuple):
         selector = ", ".join(selector)
     properties = indent(2, content)
     return f"{selector} {{\n{properties}\n}}"
@@ -74,15 +73,15 @@ def css(
     /,
     **kwargs: TagArg | list[TagArg] | tuple[TagArg, ...],
 ) -> str:
-    """Return CSS block"""
+    """Return CSS block."""
     properties = "\n".join(css_style(**kwargs))
     return css_block(selector, properties)
 
 
 def _generate_html_attributes(
-    args: dict[str, TagArg]
+    args: dict[str, TagArg],
 ) -> Generator[str, None, None]:
-    """Remove trailing underscores for arguments"""
+    """Remove trailing underscores for arguments."""
     for name, value in args.items():
         key = _key_to_html_property(name)
         yield f'{key}="{value}"'
@@ -105,7 +104,8 @@ def wrap_tag(
 ) -> str:
     """Wrap value in HTML tag.
 
-    If block, indent value"""
+    If block, indent value
+    """
     if block and value:
         value = f"\n{indent(2, value)}\n"
     start_tag = tag(type_, **kwargs)
@@ -113,9 +113,10 @@ def wrap_tag(
 
 
 def wrap_comment(text: str, /, inline: bool = False) -> str:
-    """Wrap text in comment block
+    """Wrap text in comment block.
 
-    If inline, comment does not have linebreaks before and after text"""
+    If inline, comment does not have linebreaks before and after text
+    """
     if not inline and text:
         text = f"\n{text}\n"
     if "-->" in text:
@@ -132,11 +133,8 @@ def template(
     body_tag: dict[str, TagArg] | None = None,
     lang: str = "en",
 ) -> str:
-    """Get template for page"""
-    if body_tag is None:
-        body_tag_dict = {}
-    else:
-        body_tag_dict = body_tag
+    """Get template for page."""
+    body_tag_dict = {} if body_tag is None else body_tag
     head_content = "\n".join(
         (
             tag("meta", charset="utf-8"),
@@ -147,14 +145,14 @@ def template(
             ),
             wrap_tag("title", title, False),
             head,
-        )
+        ),
     )
 
     html_content = "\n".join(
         (
             wrap_tag("head", head_content),
             wrap_tag("body", body, block=True, **body_tag_dict),
-        )
+        ),
     )
 
     return "\n".join(
@@ -165,7 +163,7 @@ def template(
                 html_content,
                 lang=lang,
             ),
-        )
+        ),
     )
 
 
@@ -177,7 +175,7 @@ def contain_in_box(inside: str, name: str | None = None) -> str:
                 wrap_tag("span", name),
                 tag("br"),
                 inside,
-            )
+            ),
         )
     return wrap_tag(
         "div",
@@ -187,9 +185,11 @@ def contain_in_box(inside: str, name: str | None = None) -> str:
 
 
 def radio_select_dict(
-    submit_name: str, options: dict[str, str], default: str | None = None
+    submit_name: str,
+    options: dict[str, str],
+    default: str | None = None,
 ) -> str:
-    """Create radio select from dictionary"""
+    """Create radio select from dictionary."""
     lines = []
     count = 0
     for display, value in options.items():
@@ -215,7 +215,7 @@ def radio_select_box(
     default: str | None = None,
     box_title: str | None = None,
 ) -> str:
-    """Create radio select value box from dictionary and optional names"""
+    """Create radio select value box from dictionary and optional names."""
     radios = radio_select_dict(submit_name, options, default)
     return contain_in_box("<br>\n" + radios, box_title)
 
@@ -227,10 +227,11 @@ def input_field(
     field_type: str = "text",
     attrs: dict[str, TagArg] | None = None,
 ) -> str:
-    """Generate HTML input field
+    """Generate HTML input field.
 
     If any attribute from attrs conflicts with an attribute defined from
-    other parameters, a ValueError is raised"""
+    other parameters, a ValueError is raised
+    """
     lines = []
     args: dict[str, TagArg] = {
         "type": field_type,
@@ -247,7 +248,7 @@ def input_field(
                 args[property_] = value
             else:
                 raise ValueError(
-                    f"Attribute {key!r} conflicts with an internal attribute"
+                    f"Attribute {key!r} conflicts with an internal attribute",
                 )
     if field_title is not None:
         lines.append(wrap_tag("label", field_title, False, for_=field_id))
@@ -256,20 +257,21 @@ def input_field(
 
 
 def bullet_list(values: list[str], **kwargs: TagArg) -> str:
-    """Return HTML bulleted list from values"""
+    """Return HTML bulleted list from values."""
     display = "\n".join(wrap_tag("li", v, block=False) for v in values)
     return wrap_tag("ul", display, block=True, **kwargs)
 
 
 def create_link(reference: str, display: str) -> str:
-    """Create link to reference"""
+    """Create link to reference."""
     return wrap_tag("a", display, False, href=reference)
 
 
 def link_list(links: dict[str, str], **kwargs: TagArg) -> str:
-    """Return HTML bulleted list of links
+    """Return HTML bulleted list of links.
 
-    Keys are the reference, values are displayed text"""
+    Keys are the reference, values are displayed text
+    """
     values = [create_link(ref, disp) for ref, disp in links.items()]
     return bullet_list(values, **kwargs)
 
@@ -288,17 +290,18 @@ def form(
     for the form.
 
     Args:
-        form_id: A string specifying the ID of the form.
-        contents: A string containing the contents of the form, including input
-            fields, text, and or other HTML elements.
-        submit_display: A string specifying the text to display on the submit
-            button for the form.
-        form_title: An optional string specifying the title of the form.
+    ----
+        form_id: ID of the form.
+        contents: Contents of the form, including input fields, text, and or other HTML elements.
+        submit_display: Text to display on the submit button for the form.
+        form_title: Optional title of the form.
 
     Returns:
+    -------
         A string containing the HTML for the generated form.
 
     Raises:
+    ------
         TypeError: If `form_id`, `contents`, or `submit_display` are not
             strings.
     """
@@ -320,24 +323,25 @@ def form(
 
 
 def jinja_statement(value: str) -> str:
-    """Wrap value in jinja statement block"""
+    """Wrap value in jinja statement block."""
     return f"{{% {value} %}}"
 
 
 def jinja_expression(value: str) -> str:
-    """Wrap value in jinja expression block"""
+    """Wrap value in jinja expression block."""
     return f"{{{{ {value} }}}}"
 
 
 def jinja_comment(value: str) -> str:
-    """Wrap value in jinja comment block"""
+    """Wrap value in jinja comment block."""
     return f"{{# {value} #}}"
 
 
 def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
-    """Generate jinja if / if else block from dictionary
+    """Generate jinja if / if else block from dictionary.
 
-    Keys are conditions to check, values are content if true"""
+    Keys are conditions to check, values are content if true
+    """
     contents = []
     count = 0
     has_else = False
@@ -352,7 +356,7 @@ def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
             if not count:
                 raise ValueError(
                     "There must be at least one condition for there to be an "
-                    "else block"
+                    "else block",
                 )
             has_else = True
             # because of how dictionaries work it should not be possible
@@ -373,7 +377,7 @@ def jinja_for_loop(
     filter_: str | None = None,
     else_content: str | None = None,
 ) -> str:
-    """Generate jinja for loop block
+    """Generate jinja for loop block.
 
     Ends up being something like:
     for {results} in {iterate} [if {filter_}]:
@@ -396,7 +400,10 @@ def jinja_for_loop(
 
 
 def jinja_arg_tag(
-    type_: str, jinja_properties: Iterable[str], /, **kwargs: TagArg
+    type_: str,
+    jinja_properties: Iterable[str],
+    /,
+    **kwargs: TagArg,
 ) -> str:
     """Return HTML tag. Removes trailing underscore from argument names."""
     args = " ".join(jinja_properties)
@@ -413,7 +420,7 @@ def jinja_radio_select(
     default: str | None = None,
     else_content: str | None = None,
 ) -> str:
-    """Create radio select from dictionary"""
+    """Create radio select from dictionary."""
     count = jinja_expression("loop.index0")
     cid = f"{submit_name}_{count}"
     args = {
@@ -425,7 +432,7 @@ def jinja_radio_select(
     jinja_properties: tuple[str, ...] = ()
     if default is not None:
         default_tag = " ".join(
-            _generate_html_attributes({"checked": "checked"})
+            _generate_html_attributes({"checked": "checked"}),
         )
         jinja_properties = (
             jinja_if_block(
@@ -440,10 +447,13 @@ def jinja_radio_select(
             (
                 jinja_arg_tag("input", jinja_properties, **args),
                 wrap_tag(
-                    "label", jinja_expression("display"), False, **{"for": cid}
+                    "label",
+                    jinja_expression("display"),
+                    False,
+                    **{"for": cid},
                 ),
                 tag("br"),
-            )
+            ),
         ),
         else_content=else_content,
     )
@@ -456,7 +466,7 @@ def jinja_bullet_list(
     filter_: str | None = None,
     else_content: str | None = None,
 ) -> str:
-    """Return HTML bulleted list from values"""
+    """Return HTML bulleted list from values."""
     return wrap_tag(
         "ul",
         jinja_for_loop(
@@ -476,11 +486,12 @@ def jinja_block(
     required: bool = False,
     block: bool = True,
 ) -> str:
-    """Wrap content in jinja block named {title}
+    """Wrap content in jinja block named {title}.
 
     If block is True, put start block and end block
     expressions on lines of their own, otherwise leave
-    everything on the same line."""
+    everything on the same line.
+    """
     if " " in title or not title:
         raise ValueError("Title must not contain spaces and must not be blank")
 
@@ -497,12 +508,12 @@ def jinja_block(
             jinja_statement(f"block {title}{tag_data}"),
             content,
             jinja_statement(f"endblock {title}"),
-        )
+        ),
     )
 
 
 def jinja_extends(template_filename: str | Iterable[str]) -> str:
-    """Return jinja extends statement from given template filename"""
+    """Return jinja extends statement from given template filename."""
     if isinstance(template_filename, str):
         filename = template_filename
     else:
@@ -511,5 +522,5 @@ def jinja_extends(template_filename: str | Iterable[str]) -> str:
 
 
 def jinja_super_block() -> str:
-    """Return jinja super() expression"""
+    """Return jinja super() expression."""
     return jinja_expression("super()")

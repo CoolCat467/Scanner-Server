@@ -34,17 +34,16 @@ dev = [
     "pre-commit",
     "pre-commit-hooks~=4.4.0",  # must match .pre-commit-config.yaml
     "tox~=4.6.0",
+    "async_generator~=1.10",
     "trio-typing[mypy]~=0.8.0",
 ]
 format = [
     "black~=23.7.0",            # must match .pre-commit-config.yaml
     "isort~=5.12.0",            # must match .pre-commit-config.yaml
-    "pycln~=2.1.5",             # must match .pre-commit-config.yaml
+    "pycln~=2.1.6",             # must match .pre-commit-config.yaml
 ]
 tests = [
-    "flake8~=6.0.0",            # must match .pre-commit-config.yaml
-    "flake8-bugbear~=23.7.10",   # must match .pre-commit-config.yaml
-    "flake8-noqa~=1.3.1",       # must match .pre-commit-config.yaml
+    "ruff~=0.0.280",            # must match .pre-commit-config.yaml
     "pytest~=7.4.0",
     "pytest-cov~=4.1.0",
     "pytest-trio~=0.8.0",
@@ -90,23 +89,81 @@ warn_unused_ignores = true
 
 [tool.black]
 line-length = 79
-target-version = ['py311']
+target-version = ['py38']
 
-[tool.isort]
-profile = "black"
-combine_as_imports = true
-line_length = 79
-skip = [".git", ".github", ".venv"]
+[tool.ruff.isort]
+combine-as-imports = true
 
 [tool.pycln]
 all = true
 disable_all_dunder_policy = true
 
+[tool.ruff]
+line-length = 79
+fix = true
+
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+
+select = ['A', 'B', 'C4', 'COM', 'CPY', 'D', 'E', 'EXE', 'F', 'FA', 'I', 'N', 'PIE', 'PT', 'PYI', 'Q', 'RET', 'RUF', 'S', 'SIM', 'SLOT', 'UP', 'YTT']
+ignore = [
+    "D211",  # conflicts with docstrings
+    "D213",  # conflicts with docstrings
+    "E203",  # conflicts with black
+    "E402",  # module level import not at top of file
+    "E501",  # conflicts with black
+    "S101",  # use of assert for tests and type narrowing
+    "D203",
+    "D401",  # Imparative mood docstrings
+]
+
+fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
+unfixable = ["D203"]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[tool.ruff.per-file-ignores]
+"src/sanescansrv/htmlgen.py" = [
+    "D417",  # Bugged "Missing argument descriptions" even though they are there
+]
+"tests/*" = [
+    "D100",  # no module docstring
+    "D103",  # no docstrings
+]
+
 [tool.tox]
 legacy_tox_ini = """
     [tox]
     minversion = 3.11.0
-    envlist = py311, pycln, black, isort, pytest, flake8, mypy
+    envlist = py311, pycln, black, pytest, mypy
     isolated_build = false
 
     [gh-actions]
@@ -125,12 +182,9 @@ legacy_tox_ini = """
         pytest-trio
     commands = pytest --basetemp={envtmpdir}
 
-    [testenv:flake8]
-    deps =
-        flake8
-        flake8-bugbear
-        flake8-noqa
-    commands = flake8 src tests
+    [testenv:ruff]
+    deps = ruff
+    commands = ruff check src tests pyproject.toml
 
     [testenv:mypy]
     deps =
@@ -152,9 +206,4 @@ legacy_tox_ini = """
     deps =
         black
     commands = black src tests
-
-    [format:isort]
-    deps =
-        isort
-    commands = isort src tests
 """

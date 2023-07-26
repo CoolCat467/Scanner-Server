@@ -1,4 +1,4 @@
-"Generate pages for the sane scanner web server"
+"""Generate pages for the sane scanner web server."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ __author__ = "CoolCat467"
 
 
 import pathlib
-from typing import Callable, Final
+from collections.abc import Callable
+from typing import Final
 
 from sanescansrv import htmlgen, server
 
@@ -20,7 +21,7 @@ STATIC_FUNCTIONS: dict[str, Callable[[], str]] = {}
 
 
 def save_template(name: str, content: str) -> None:
-    """Save content as new template "{name}" """
+    """Save content as new template "{name}"."""
     assert TEMPLATE_FOLDER is not None
     template_path = TEMPLATE_FOLDER / f"{name}.html.jinja"
     with open(template_path, "w", encoding="utf-8") as template_file:
@@ -30,7 +31,7 @@ def save_template(name: str, content: str) -> None:
 
 
 def save_static(filename: str, content: str) -> None:
-    """Save content as new static file "{filename}" """
+    """Save content as new static file "{filename}"."""
     assert STATIC_FOLDER is not None
     static_path = STATIC_FOLDER / filename
     with open(static_path, "w", encoding="utf-8") as static_file:
@@ -42,12 +43,12 @@ def save_static(filename: str, content: str) -> None:
 def save_template_as(
     filename: str,
 ) -> Callable[[Callable[[], str]], Callable[[], str]]:
-    """Save generated template as filename"""
+    """Save generated template as filename."""
 
     def function_wrapper(function: Callable[[], str]) -> Callable[[], str]:
         if filename in TEMPLATE_FUNCTIONS:
             raise NameError(
-                f"{filename!r} already exists as template filename"
+                f"{filename!r} already exists as template filename",
             )
         TEMPLATE_FUNCTIONS[filename] = function
         return function
@@ -58,7 +59,7 @@ def save_template_as(
 def save_static_as(
     filename: str,
 ) -> Callable[[Callable[[], str]], Callable[[], str]]:
-    """Save generated static file as filename"""
+    """Save generated static file as filename."""
 
     def function_wrapper(function: Callable[[], str]) -> Callable[[], str]:
         if filename in STATIC_FUNCTIONS:
@@ -71,7 +72,7 @@ def save_static_as(
 
 @save_static_as("style.css")
 def generate_style_css() -> str:
-    """Generate style.css static file"""
+    """Generate style.css static file."""
     mono = "SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace"
     return "\n".join(
         (
@@ -147,7 +148,7 @@ def generate_style_css() -> str:
                 margin_right="0.5%",
                 min_width="min-content",
             ),
-        )
+        ),
     )
 
 
@@ -159,14 +160,17 @@ def template(
     body_tag: dict[str, htmlgen.TagArg] | None = None,
     lang: str = "en",
 ) -> str:
-    """HTML Template for application"""
+    """HTML Template for application."""
     head_data = "\n".join(
         (
             htmlgen.tag(
-                "link", rel="stylesheet", type_="text/css", href="/style.css"
+                "link",
+                rel="stylesheet",
+                type_="text/css",
+                href="/style.css",
             ),
             head,
-        )
+        ),
     )
 
     join_body = (
@@ -199,20 +203,24 @@ def template(
                             footer,
                             block=False,
                         ),
-                    )
+                    ),
                 ),
             ),
-        )
+        ),
     )
 
     return htmlgen.template(
-        title, body_data, head=head_data, body_tag=body_tag, lang=lang
+        title,
+        body_data,
+        head=head_data,
+        body_tag=body_tag,
+        lang=lang,
     )
 
 
 @save_template_as("root_get")
 def generate_root_get() -> str:
-    """Generate / (root) GET page"""
+    """Generate / (root) GET page."""
     link = htmlgen.create_link("/update_scanners", "Update Devices")
 
     scanner_select = htmlgen.contain_in_box(
@@ -222,7 +230,9 @@ def generate_root_get() -> str:
             "default",
             # htmlgen.jinja_statement('default'),
             htmlgen.radio_select_dict(
-                "scanner", {f"None - {link}": "none"}, "none"
+                "scanner",
+                {f"None - {link}": "none"},
+                "none",
             ),
         ),
         "Select a Scanner:",
@@ -238,7 +248,10 @@ def generate_root_get() -> str:
     form_content = "\n".join((image_format, scanner_select))
 
     contents = htmlgen.form(
-        "scan_request", form_content, "Scan!", "Press Scan to start scanning."
+        "scan_request",
+        form_content,
+        "Scan!",
+        "Press Scan to start scanning.",
     )
 
     html = "\n".join(
@@ -261,7 +274,7 @@ def generate_root_get() -> str:
                     block=False,
                 ),
             ),
-        )
+        ),
     )
 
     return template("Request Scan", html)
@@ -269,7 +282,7 @@ def generate_root_get() -> str:
 
 @save_template_as("scanners_get")
 def generate_scanners_get() -> str:
-    """Generate /scanners GET page"""
+    """Generate /scanners GET page."""
     scanners = htmlgen.jinja_bullet_list(
         ("link", "disp"),
         "scanners.items()",
@@ -290,13 +303,14 @@ def generate_scanners_get() -> str:
             contents,
             htmlgen.tag("br"),
             htmlgen.create_link(
-                "/", htmlgen.wrap_tag("button", "Scan Request")
+                "/",
+                htmlgen.wrap_tag("button", "Scan Request"),
             ),
             htmlgen.create_link(
                 "/update_scanners",
                 htmlgen.wrap_tag("button", "Update Devices"),
             ),
-        )
+        ),
     )
 
     return template("Devices", html)
@@ -304,7 +318,7 @@ def generate_scanners_get() -> str:
 
 @save_template_as("settings_get")
 def generate_settings_get() -> str:
-    """Generate /settings GET page"""
+    """Generate /settings GET page."""
     scanner = htmlgen.jinja_expression("scanner")
     contents = htmlgen.jinja_if_block(
         {
@@ -319,7 +333,7 @@ def generate_settings_get() -> str:
                 "There are no additional settings for this scanner.",
                 block=False,
             ),
-        }
+        },
     )
     html = "\n".join(
         (
@@ -341,13 +355,13 @@ def generate_settings_get() -> str:
                     block=False,
                 ),
             ),
-        )
+        ),
     )
     return template(scanner, html)
 
 
 def run() -> None:
-    "Generate all page templates and static files"
+    """Generate all page templates and static files."""
     for filename, function in TEMPLATE_FUNCTIONS.items():
         save_template(filename, function())
     for filename, function in STATIC_FUNCTIONS.items():
