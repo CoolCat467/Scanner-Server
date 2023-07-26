@@ -156,16 +156,15 @@ max-complexity = 10
 [tool.tox]
 legacy_tox_ini = """
     [tox]
-    minversion = 3.11.0
-    envlist = py311, pytest, mypy
+    envlist = py38, py311, pytest, mypy
     isolated_build = false
 
     [gh-actions]
     python =
+        3.8: py38, pytest
         3.11: py311, pytest, mypy
 
     [testenv]
-    basepython = python3.11
     setenv =
         PYTHONPATH = {toxinidir}
 
