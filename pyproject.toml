@@ -37,13 +37,7 @@ dev = [
     "async_generator~=1.10",
     "trio-typing[mypy]~=0.8.0",
 ]
-format = [
-    "black~=23.7.0",            # must match .pre-commit-config.yaml
-    "isort~=5.12.0",            # must match .pre-commit-config.yaml
-    "pycln~=2.1.6",             # must match .pre-commit-config.yaml
-]
 tests = [
-    "ruff~=0.0.280",            # must match .pre-commit-config.yaml
     "pytest~=7.4.0",
     "pytest-cov~=4.1.0",
     "pytest-trio~=0.8.0",
@@ -163,12 +157,12 @@ max-complexity = 10
 legacy_tox_ini = """
     [tox]
     minversion = 3.11.0
-    envlist = py311, pycln, black, pytest, mypy
+    envlist = py311, pytest, mypy
     isolated_build = false
 
     [gh-actions]
     python =
-        3.11: py311, pytest, flake8, mypy
+        3.11: py311, pytest, mypy
 
     [testenv]
     basepython = python3.11
@@ -182,28 +176,9 @@ legacy_tox_ini = """
         pytest-trio
     commands = pytest --basetemp={envtmpdir}
 
-    [testenv:ruff]
-    deps = ruff
-    commands = ruff check src tests pyproject.toml
-
     [testenv:mypy]
     deps =
         mypy
         trio-typing[mypy]
     commands = mypy src
-
-    [format]
-    basepython = python3.11
-    setenv =
-        PYTHONPATH = {toxinidir}
-
-    [format:pycln]
-    deps =
-        pycln
-    commands = pycln src tests
-
-    [format:black]
-    deps =
-        black
-    commands = black src tests
 """
