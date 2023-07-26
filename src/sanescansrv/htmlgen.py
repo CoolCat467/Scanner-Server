@@ -45,7 +45,7 @@ def _generate_css_declarations(
     """Yield declarations."""
     for key, values in properties.items():
         property_ = _key_to_html_property(key)
-        wrap = values if isinstance(values, list | tuple) else (values,)
+        wrap = values if isinstance(values, (list, tuple)) else (values,)
         value = " ".join(_quote_strings(wrap))
         yield f"{property_}: {value}"
 
@@ -62,7 +62,7 @@ def css_block(
     content: str,
 ) -> str:
     """Return CSS block."""
-    if isinstance(selector, list | tuple):
+    if isinstance(selector, (list, tuple)):
         selector = ", ".join(selector)
     properties = indent(2, content)
     return f"{selector} {{\n{properties}\n}}"
