@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "mypy~=1.4.1",              # must match .pre-commit-config.yaml
+    "mypy~=1.5.0",              # must match .pre-commit-config.yaml
     "pre-commit",
     "pre-commit-hooks~=4.4.0",  # must match .pre-commit-config.yaml
     "tox~=4.6.0",
