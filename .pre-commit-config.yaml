@@ -20,7 +20,7 @@ repos:
       - id: sort-simple-yaml
         files: .pre-commit-config.yaml
   - repo: https://github.com/hadialqattan/pycln
-    rev: v2.2.1 # must match pyproject.toml
+    rev: v2.2.2 # must match pyproject.toml
     hooks:
       - id: pycln
         args: [--config=pyproject.toml, src]
@@ -32,7 +32,7 @@ repos:
       - id: black
         language_version: python3.11
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.282 # must match pyproject.toml
+    rev: v0.0.284 # must match pyproject.toml
     hooks:
       - id: ruff
         types: [file]
