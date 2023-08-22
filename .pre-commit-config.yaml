@@ -32,7 +32,7 @@ repos:
       - id: black
         language_version: python3.11
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.284 # must match pyproject.toml
+    rev: v0.0.285 # must match pyproject.toml
     hooks:
       - id: ruff
         types: [file]
