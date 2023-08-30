@@ -144,14 +144,12 @@ max-complexity = 10
 [tool.tox]
 legacy_tox_ini = """
     [tox]
-    envlist = py38, py39, py310, py311, pytest, mypy
+    envlist = py39, py311, pytest, mypy
     isolated_build = false
 
     [gh-actions]
     python =
-        3.8: py38, pytest, mypy
-        3.9: py39, pytest
-        3.10: py310, pytest
+        3.9: py38, pytest
         3.11: py311, pytest, mypy
 
     [testenv]
@@ -168,7 +166,5 @@ legacy_tox_ini = """
     [testenv:mypy]
     deps =
         mypy
-        # trio-typing[mypy]
-        # async_generator
     commands = mypy src
 """
