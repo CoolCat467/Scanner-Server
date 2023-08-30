@@ -7,7 +7,7 @@ ci:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0 # must match pyproject.toml
+    rev: v4.4.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -27,12 +27,12 @@ repos:
         types: [file]
         types_or: [python, pyi]
   - repo: https://github.com/psf/black
-    rev: 23.7.0 # must match pyproject.toml
+    rev: 23.7.0
     hooks:
       - id: black
-        language_version: python3.11
+        language_version: python3.9
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.286 # must match pyproject.toml
+    rev: v0.0.285
     hooks:
       - id: ruff
         types: [file]
