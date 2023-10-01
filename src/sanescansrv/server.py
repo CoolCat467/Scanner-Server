@@ -264,7 +264,7 @@ async def root_post() -> Response | WerkzeugResponse:
 
     filename = preform_scan(device, img_format)
 
-    return await app.send_static_file(filename)
+    return app.redirect(f"/{filename}")
 
 
 @app.get("/update_scanners")
