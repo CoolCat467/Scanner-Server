@@ -33,6 +33,7 @@ from configparser import ConfigParser
 from dataclasses import dataclass
 from functools import partial
 from os import makedirs, path
+from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urlencode
 
@@ -153,8 +154,8 @@ class HopefullyTemporarySubclass(QuartTrio):
             if result is None:
                 result = await self.dispatch_request(request_context)
         except (Exception, trio.MultiError) as error:
-            result = await self.handle_user_exception(error)
-        return await self.finalize_request(result, request_context)
+            result = await self.handle_user_exception(error)  # type: ignore[assignment]
+        return await self.finalize_request(result, request_context)  # type: ignore[arg-type]
 
 
 app: Final = HopefullyTemporarySubclass(  # pylint: disable=invalid-name
@@ -235,7 +236,7 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"scan.{out_type}"
     assert app.static_folder is not None
-    filepath = app.static_folder / filename
+    filepath = Path(app.static_folder) / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
 
@@ -256,7 +257,7 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
     return filename
 
 
-@app.get("/")
+@app.get("/")  # type: ignore[type-var]
 async def root_get() -> AsyncIterator[str]:
     """Main page get request."""
     scanners = {}
@@ -305,7 +306,7 @@ async def update_scanners_get() -> WerkzeugResponse:
     return app.redirect("scanners")
 
 
-@app.get("/scanners")
+@app.get("/scanners")  # type: ignore[type-var]
 async def scanners_get() -> AsyncIterator[str]:
     """Scanners page get handling."""
     scanners = {}
@@ -332,7 +333,7 @@ def get_setting_radio(setting: DeviceSetting) -> str:
     )
 
 
-@app.get("/settings")
+@app.get("/settings")  # type: ignore[type-var]
 async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     """Settings page get handling."""
     scanner = request.args.get("scanner", "none")
