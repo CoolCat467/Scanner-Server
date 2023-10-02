@@ -86,11 +86,11 @@ fix = true
 
 include = ["*.py", "*.pyi", "**/pyproject.toml"]
 
-select = ['A', 'B', 'C4', 'COM', 'CPY', 'D', 'E', 'EXE', 'F', 'FA', 'I', 'N', 'PIE', 'PT', 'PYI', 'Q', 'RET', 'RUF', 'S', 'SIM', 'SLOT', 'UP', 'YTT']
+select = ['A', 'B', 'C4', 'COM', 'D', 'E', 'EXE', 'F', 'FA', 'I', 'N', 'PIE', 'PT', 'PYI', 'Q', 'RET', 'RUF', 'S', 'SIM', 'SLOT', 'UP', 'YTT']
 ignore = [
     "D211",  # conflicts with docstrings
     "D213",  # conflicts with docstrings
-    "E203",  # conflicts with black
+##    "E203",  # conflicts with black
     "E402",  # module level import not at top of file
     "E501",  # conflicts with black
     "S101",  # use of assert for tests and type narrowing
