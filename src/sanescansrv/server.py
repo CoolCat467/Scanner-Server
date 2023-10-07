@@ -20,7 +20,7 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.1.3"
+__version__ = "2.1.4"
 __license__ = "GPLv3"
 
 
@@ -41,8 +41,7 @@ import sane
 import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
-from quart import Response, request, request_started
-from quart.ctx import RequestContext
+from quart import Response, request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug import Response as WerkzeugResponse
@@ -130,35 +129,7 @@ class DeviceSetting:
         return f"--{self.name}={self.set if self.set is not None else self.default}"
 
 
-class HopefullyTemporarySubclass(QuartTrio):
-    """Hopefully Temporary Subclass of QuartTrio with patched code because QuartTrio is out of date."""
-
-    __slots__ = ()
-
-    async def full_dispatch_request(
-        self,
-        request_context: RequestContext | None = None,
-    ) -> Response | WerkzeugResponse:
-        """Adds pre and post processing to the request dispatching.
-
-        Arguments:
-        ---------
-            request_context: The request context, optional as Flask
-                omits this argument.
-        """
-        # await self.try_trigger_before_first_request_functions()
-        # await request_started.send(self)
-        await request_started.send_async(self, _sync_wrapper=self.ensure_async)
-        try:
-            result = await self.preprocess_request(request_context)
-            if result is None:
-                result = await self.dispatch_request(request_context)
-        except (Exception, trio.MultiError) as error:
-            result = await self.handle_user_exception(error)  # type: ignore[assignment]
-        return await self.finalize_request(result, request_context)  # type: ignore[arg-type]
-
-
-app: Final = HopefullyTemporarySubclass(  # pylint: disable=invalid-name
+app: Final = QuartTrio(  # pylint: disable=invalid-name
     __name__,
     static_folder="static",
     template_folder="templates",

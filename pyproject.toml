@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanescansrv"
-version = "2.1.3"
+version = "2.1.4"
 authors = [
   { name="CoolCat467" },
 ]
@@ -23,11 +23,11 @@ classifiers = [
 ]
 keywords = ["scanner", "sane", "server", "frontend"]
 dependencies = [
-    "hypercorn[trio]~=0.14.3",
-    "Pillow~=10.0.0",
+    "hypercorn[trio]~=0.14.4",
+    "Pillow~=10.0.1",
     "python-sane~=2.9.1",
-    "quart~=0.19.2",
-    "quart-trio~=0.10.0",
+    "quart~=0.19.3",
+    "quart-trio~=0.11.0",
     "trio~=0.22.0",
     "Werkzeug~=3.0.0"
 ]
