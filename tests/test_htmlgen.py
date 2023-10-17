@@ -9,11 +9,11 @@ def test_indent_single() -> None:
 
 
 def test_indent_lines() -> None:
-    assert htmlgen.indent(4, "cat\npotatoe") == "    cat\n    potatoe"
+    assert htmlgen.indent(4, "cat\npotatoe") == "    cat\n    potato"
 
 
 def test_indent_lines_indent_two() -> None:
-    assert htmlgen.indent(2, "cat\npotatoe") == "  cat\n  potatoe"
+    assert htmlgen.indent(2, "cat\npotatoe") == "  cat\n  potato"
 
 
 def test_deindent_single() -> None:
@@ -25,11 +25,11 @@ def test_deindent_single_only_four() -> None:
 
 
 def test_deindent_lines() -> None:
-    assert htmlgen.deindent(4, "    cat\n    potatoe") == "cat\npotatoe"
+    assert htmlgen.deindent(4, "    cat\n    potato") == "cat\npotatoe"
 
 
 def test_deindent_lines_level_seven() -> None:
-    assert htmlgen.deindent(7, "       cat\n       potatoe") == "cat\npotatoe"
+    assert htmlgen.deindent(7, "       cat\n       potato") == "cat\npotatoe"
 
 
 def test_css_style() -> None:
@@ -123,7 +123,7 @@ def test_wrap_comment_inline() -> None:
 
 def test_wrap_comment_avoid_hacks() -> None:
     with pytest.raises(ValueError, match="Attempted comment escape"):
-        htmlgen.wrap_comment("-->haha now javascript hax you", inline=True)
+        htmlgen.wrap_comment("-->haha now javascript hacks you", inline=True)
 
 
 def test_template() -> None:

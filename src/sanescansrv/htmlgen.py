@@ -1,4 +1,4 @@
-"""HTML Generation - Generate HTML & CSS programatically."""
+"""HTML Generation - Generate HTML & CSS programmatically."""
 
 from __future__ import annotations
 
