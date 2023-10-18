@@ -25,16 +25,18 @@ __license__ = "GPLv3"
 
 
 import contextlib
+import functools
 import socket
 import sys
 import time
-from collections.abc import AsyncIterator
+import traceback
+from collections.abc import AsyncIterator, Awaitable, Callable
 from configparser import ConfigParser
 from dataclasses import dataclass
 from functools import partial
 from os import makedirs, path
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, TypeVar, cast
 from urllib.parse import urlencode
 
 import sane
@@ -45,6 +47,7 @@ from quart import Response, request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug import Response as WerkzeugResponse
+from werkzeug.exceptions import HTTPException
 
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
@@ -54,6 +57,8 @@ SaneError = sane._sane.error
 logger.set_title(__title__)
 
 SANE_INITIALIZED = False
+
+Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
 
 
 def stop_sane() -> None:
@@ -70,6 +75,84 @@ def restart_sane() -> None:
     stop_sane()
     sane.init()
     SANE_INITIALIZED = True
+
+
+async def send_error(
+    page_title: str,
+    error_body: str,
+    return_link: str | None = None,
+) -> AsyncIterator[str]:
+    """Stream error page."""
+    return await stream_template(
+        "error_page.html.jinja",
+        page_title=page_title,
+        error_body=error_body,
+        return_link=return_link,
+    )
+
+
+async def get_exception_page(code: int, name: str, desc: str) -> Response:
+    """Return Response for exception."""
+    resp_body = await send_error(
+        page_title=f"{code} {name}",
+        error_body=desc,
+    )
+    # Response body can be AsyncIterator, type var is not correct
+    return Response(resp_body, status=code)  # type: ignore[type-var]
+
+
+def pretty_exception_name(exc: BaseException) -> str:
+    """Make exception into pretty text (split by spaces)."""
+    exc_str, reason = repr(exc).split("(", 1)
+    reason = reason[1:-2]
+    words = []
+    last = 0
+    for idx, char in enumerate(exc_str):
+        if char.islower():
+            continue
+        word = exc_str[last:idx]
+        if not word:
+            continue
+        words.append(word)
+        last = idx
+    words.append(exc_str[last:])
+    error = " ".join(w for w in words if w not in {"Error", "Exception"})
+    return f"{error} ({reason})"
+
+
+def pretty_exception(function: Handler) -> Handler:
+    """Make exception pages pretty."""
+
+    @functools.wraps(function)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        code = None
+        name = "Exception"
+        desc = None
+        try:
+            return await function(*args, **kwargs)
+        except HTTPException as exception:
+            traceback.print_exception(exception)
+            code = exception.code
+            desc = exception.description
+            name = exception.name
+        except Exception as exception:
+            traceback.print_exception(exception)
+            exc_name = pretty_exception_name(exception)
+            name = f"Internal Server Error ({exc_name})"
+        code = code or 500
+        desc = desc or (
+            "The server encountered an internal error and "
+            + "was unable to complete your request. "
+            + "Either the server is overloaded or there is an error "
+            + "in the application."
+        )
+        return await get_exception_page(
+            code,
+            name,
+            desc,
+        )
+
+    return cast(Handler, wrapper)
 
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
@@ -249,6 +332,7 @@ async def root_get() -> AsyncIterator[str]:
 
 
 @app.post("/")
+@pretty_exception
 async def root_post() -> Response | WerkzeugResponse:
     """Main page post handling."""
     multi_dict = await request.form
