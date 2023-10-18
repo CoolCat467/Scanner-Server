@@ -9,11 +9,11 @@ def test_indent_single() -> None:
 
 
 def test_indent_lines() -> None:
-    assert htmlgen.indent(4, "cat\npotatoe") == "    cat\n    potato"
+    assert htmlgen.indent(4, "cat\npotato") == "    cat\n    potato"
 
 
 def test_indent_lines_indent_two() -> None:
-    assert htmlgen.indent(2, "cat\npotatoe") == "  cat\n  potato"
+    assert htmlgen.indent(2, "cat\npotato") == "  cat\n  potato"
 
 
 def test_deindent_single() -> None:
@@ -25,11 +25,11 @@ def test_deindent_single_only_four() -> None:
 
 
 def test_deindent_lines() -> None:
-    assert htmlgen.deindent(4, "    cat\n    potato") == "cat\npotatoe"
+    assert htmlgen.deindent(4, "    cat\n    potato") == "cat\npotato"
 
 
 def test_deindent_lines_level_seven() -> None:
-    assert htmlgen.deindent(7, "       cat\n       potato") == "cat\npotatoe"
+    assert htmlgen.deindent(7, "       cat\n       potato") == "cat\npotato"
 
 
 def test_css_style() -> None:
