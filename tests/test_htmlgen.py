@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sanescansrv import htmlgen
+from constants import Value_Error_Constant, Wrap_Constants
 
 
 def test_indent_single() -> None:
@@ -107,23 +108,21 @@ def test_wrap_tag(
 
 def test_wrap_comment() -> None:
     assert (
-        htmlgen.wrap_comment("this is comment")
-        == """<!--
-this is comment
--->"""
+        htmlgen.wrap_comment(Wrap_Constants.COMMENT)
+        == Wrap_Constants.COMMENT_RESULT
     )
 
 
 def test_wrap_comment_inline() -> None:
     assert (
-        htmlgen.wrap_comment("smol comment", inline=True)
-        == "<!--smol comment-->"
+        htmlgen.wrap_comment(Wrap_Constants.INLINE_COMMENT, inline=True)
+        == Wrap_Constants.INLINE_RESULT
     )
 
 
 def test_wrap_comment_avoid_hacks() -> None:
-    with pytest.raises(ValueError, match="Attempted comment escape"):
-        htmlgen.wrap_comment("-->haha now javascript hacks you", inline=True)
+    with pytest.raises(ValueError, match=Value_Error_Constant.COMMENT_ERROR):
+        htmlgen.wrap_comment(Wrap_Constants.WRAP_COMMENT, inline=True)
 
 
 def test_template() -> None:
@@ -274,7 +273,7 @@ def test_input_field_attrs() -> None:
 def test_input_field_exception() -> None:
     with pytest.raises(
         ValueError,
-        match="Attribute 'id' conflicts with an internal attribute",
+        match=Value_Error_Constant.FIELD_ERROR,
     ):
         htmlgen.input_field(
             "field_id",
@@ -377,7 +376,7 @@ yay newfrien
 def test_jinja_if_block_after_else_exception() -> None:
     with pytest.raises(
         ValueError,
-        match="Found condition after else block defined",
+        match=Value_Error_Constant.IF_BLOCK_ERROR,
     ):
         htmlgen.jinja_if_block(
             {
@@ -391,7 +390,7 @@ def test_jinja_if_block_after_else_exception() -> None:
 def test_jinja_if_block_no_if_for_else_exception() -> None:
     with pytest.raises(
         ValueError,
-        match="There must be at least one condition for there to be an else block",
+        match=Value_Error_Constant.NO_IF_BLOCK_ERROR,
     ):
         htmlgen.jinja_if_block(
             {
@@ -543,7 +542,7 @@ hallos content
 def test_jinja_block_invalid_title() -> None:
     with pytest.raises(
         ValueError,
-        match="Title must not contain spaces and must not be blank",
+        match=Value_Error_Constant.INVALID_TITLE_ERROR,
     ):
         htmlgen.jinja_block("name with spaces", "content")
 
@@ -551,7 +550,7 @@ def test_jinja_block_invalid_title() -> None:
 def test_jinja_block_invalid_blank_title() -> None:
     with pytest.raises(
         ValueError,
-        match="Title must not contain spaces and must not be blank",
+        match=Value_Error_Constant.INVALID_TITLE_ERROR,
     ):
         htmlgen.jinja_block("", "content")
 

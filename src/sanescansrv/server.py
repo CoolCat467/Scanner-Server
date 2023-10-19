@@ -51,6 +51,7 @@ from werkzeug.exceptions import HTTPException
 
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
+from constants import Value_Error_Constant
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError = sane._sane.error
@@ -287,7 +288,7 @@ def display_progress(current: int, total: int) -> None:
 def preform_scan(device_name: str, out_type: str = "png") -> str:
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
-        raise ValueError("Output type must be pnm, tiff, png, or jpeg")
+        raise ValueError(Value_Error_Constant.SCAN_ERROR)
     filename = f"scan.{out_type}"
     assert app.static_folder is not None
     filepath = Path(app.static_folder) / filename
@@ -540,7 +541,7 @@ def run() -> None:
     print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}\n")
 
     if target == "None":
-        print("No default device in config file.")
+        print(Value_Error_Constant.TARGET_ERROR)
 
     ip_address = None
     if hostname != "None":

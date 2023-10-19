@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator, Iterable
 from typing import Union
+from constants import Value_Error_Constant
 
 
 def indent(level: int, text: str) -> str:
@@ -120,7 +121,7 @@ def wrap_comment(text: str, /, inline: bool = False) -> str:
     if not inline and text:
         text = f"\n{text}\n"
     if "-->" in text:
-        raise ValueError("Attempted comment escape")
+        raise ValueError(Value_Error_Constant.WRAP_ERROR)
     escaped_text = text.replace("-->", "")
     return f"<!--{escaped_text}-->"
 
@@ -350,14 +351,11 @@ def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
         cond = ""
         if condition:
             if has_else:
-                raise ValueError("Found condition after else block defined")
+                raise ValueError(Value_Error_Constant.CONDITION_ERROR)
             cond = f" {condition}"
         else:
             if not count:
-                raise ValueError(
-                    "There must be at least one condition for there to be an "
-                    "else block",
-                )
+                raise ValueError(Value_Error_Constant.COUNT_ERROR)
             has_else = True
             # because of how dictionaries work it should not be possible
             # for there to be more than one key matching ""
@@ -493,7 +491,7 @@ def jinja_block(
     everything on the same line.
     """
     if " " in title or not title:
-        raise ValueError("Title must not contain spaces and must not be blank")
+        raise ValueError(Value_Error_Constant.TITLE_ERROR)
 
     join = "\n" if block else ""
     extra_tags = []

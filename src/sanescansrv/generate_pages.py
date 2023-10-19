@@ -8,22 +8,16 @@ __title__ = "Generate Pages"
 __author__ = "CoolCat467"
 
 
-import pathlib
-from collections.abc import Callable
-from typing import Final
 
 from sanescansrv import htmlgen, server
+from constants import Page_Constants, Callable
 
-TEMPLATE_FOLDER: Final = pathlib.Path("templates")
-TEMPLATE_FUNCTIONS: dict[str, Callable[[], str]] = {}
-STATIC_FOLDER: Final = pathlib.Path("static")
-STATIC_FUNCTIONS: dict[str, Callable[[], str]] = {}
 
 
 def save_template(name: str, content: str) -> None:
     """Save content as new template "{name}"."""
-    assert TEMPLATE_FOLDER is not None
-    template_path = TEMPLATE_FOLDER / f"{name}.html.jinja"
+    assert Page_Constants.TEMPLATE_FOLDER is not None
+    template_path = Page_Constants.TEMPLATE_FOLDER / f"{name}.html.jinja"
     with open(template_path, "w", encoding="utf-8") as template_file:
         template_file.write(content)
         template_file.write("\n")
@@ -32,8 +26,8 @@ def save_template(name: str, content: str) -> None:
 
 def save_static(filename: str, content: str) -> None:
     """Save content as new static file "{filename}"."""
-    assert STATIC_FOLDER is not None
-    static_path = STATIC_FOLDER / filename
+    assert Page_Constants.STATIC_FOLDER is not None
+    static_path = Page_Constants.STATIC_FOLDER / filename
     with open(static_path, "w", encoding="utf-8") as static_file:
         static_file.write(content)
         static_file.write("\n")
@@ -46,11 +40,11 @@ def save_template_as(
     """Save generated template as filename."""
 
     def function_wrapper(function: Callable[[], str]) -> Callable[[], str]:
-        if filename in TEMPLATE_FUNCTIONS:
+        if filename in Page_Constants.TEMPLATE_FUNCTIONS:
             raise NameError(
                 f"{filename!r} already exists as template filename",
             )
-        TEMPLATE_FUNCTIONS[filename] = function
+        Page_Constants.TEMPLATE_FUNCTIONS[filename] = function
         return function
 
     return function_wrapper
@@ -62,9 +56,9 @@ def save_static_as(
     """Save generated static file as filename."""
 
     def function_wrapper(function: Callable[[], str]) -> Callable[[], str]:
-        if filename in STATIC_FUNCTIONS:
+        if filename in Page_Constants.STATIC_FUNCTIONS:
             raise NameError(f"{filename!r} already exists as static filename")
-        STATIC_FUNCTIONS[filename] = function
+        Page_Constants.STATIC_FUNCTIONS[filename] = function
         return function
 
     return function_wrapper
@@ -393,9 +387,9 @@ def generate_settings_get() -> str:
 
 def run() -> None:
     """Generate all page templates and static files."""
-    for filename, function in TEMPLATE_FUNCTIONS.items():
+    for filename, function in Page_Constants.TEMPLATE_FUNCTIONS.items():
         save_template(filename, function())
-    for filename, function in STATIC_FUNCTIONS.items():
+    for filename, function in Page_Constants.STATIC_FUNCTIONS.items():
         save_static(filename, function())
 
 
