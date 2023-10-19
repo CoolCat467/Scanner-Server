@@ -8,10 +8,8 @@ __title__ = "Generate Pages"
 __author__ = "CoolCat467"
 
 
-
+from constants import Callable, Page_Constants
 from sanescansrv import htmlgen, server
-from constants import Page_Constants, Callable
-
 
 
 def save_template(name: str, content: str) -> None:

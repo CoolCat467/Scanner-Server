@@ -3,12 +3,12 @@ from collections.abc import Callable
 from typing import Final
 
 
-
 class Page_Constants:
     TEMPLATE_FOLDER: Final = pathlib.Path("templates")
     TEMPLATE_FUNCTIONS: dict[str, Callable[[], str]] = {}
     STATIC_FOLDER: Final = pathlib.Path("static")
     STATIC_FUNCTIONS: dict[str, Callable[[], str]] = {}
+
 
 class Value_Error_Constant:
     WRAP_ERROR = "Attempted comment escape"
@@ -22,17 +22,17 @@ class Value_Error_Constant:
     COMMENT_ERROR = "Attempted comment escape"
     FIELD_ERROR = "Attribute 'id' conflicts with an internal attribute"
     IF_BLOCK_ERROR = "Found condition after else block defined"
-    NO_IF_BLOCK_ERROR = "There must be at least one condition for there to be an else block"
+    NO_IF_BLOCK_ERROR = (
+        "There must be at least one condition for there to be an else block"
+    )
     INVALID_TITLE_ERROR = "Title must not contain spaces and must not be blank"
+
 
 class Wrap_Constants:
     COMMENT = "This is comment"
-    COMMENT_RESULT =  """<!--
+    COMMENT_RESULT = """<!--
                     this is comment
                     -->"""
     INLINE_COMMENT = "smol comment"
     INLINE_RESULT = "<!--smol comment-->"
     WRAP_COMMENT = "-->haha now javascript hacks you"
-    
-
-

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sanescansrv import htmlgen
+
 from constants import Value_Error_Constant, Wrap_Constants
 
 

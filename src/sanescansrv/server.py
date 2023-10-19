@@ -49,9 +49,9 @@ from quart_trio import QuartTrio
 from werkzeug import Response as WerkzeugResponse
 from werkzeug.exceptions import HTTPException
 
+from constants import Value_Error_Constant
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
-from constants import Value_Error_Constant
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError = sane._sane.error
