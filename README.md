@@ -2,6 +2,12 @@
 Kind of like CUPS but it's for scanning, not printing.
 
 [![Tests](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml)
+<!-- BADGIE TIME -->
+
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![code style: black](https://img.shields.io/badge/code_style-black-000000.svg)](https://github.com/psf/black)
+
+<!-- END BADGIE TIME -->
 
 ![thumbnail](./img/thumbnail.png)
 

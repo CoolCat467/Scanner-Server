@@ -78,11 +78,11 @@ all = true
 disable_all_dunder_policy = true
 
 [tool.black]
-line-length = 79  # Will not raise errors if too big, see below.
+line-length = 120  # Will not raise errors if too big, see below.
 target-version = ['py38']
 
 [tool.ruff]
-line-length = 200  # I don't care about line length a whole lot, just that it's not TOO big.
+line-length = 120  # I don't care about line length a whole lot, just that it's not TOO big.
 fix = true
 
 include = ["*.py", "*.pyi", "**/pyproject.toml"]

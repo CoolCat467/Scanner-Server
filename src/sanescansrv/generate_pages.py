@@ -193,8 +193,7 @@ def template(
                     (
                         htmlgen.wrap_tag(
                             "i",
-                            "If you're reading this, the web server "
-                            "was installed correctly.™",
+                            "If you're reading this, the web server was installed correctly.™",
                             block=False,
                         ),
                         htmlgen.tag("hr"),
@@ -323,7 +322,7 @@ def generate_scanners_get() -> str:
         ),
         else_content=htmlgen.wrap_tag(
             "p",
-            "There were no devices detected. " "Are your device(s) turned on?",
+            "There were no devices detected. Are your device(s) turned on?",
             block=False,
         ),
     )

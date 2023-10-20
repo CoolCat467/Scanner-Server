@@ -355,8 +355,7 @@ def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
         else:
             if not count:
                 raise ValueError(
-                    "There must be at least one condition for there to be an "
-                    "else block",
+                    "There must be at least one condition for there to be an else block",
                 )
             has_else = True
             # because of how dictionaries work it should not be possible
@@ -514,7 +513,9 @@ def jinja_block(
 
 def jinja_extends(template_filename: str | Iterable[str]) -> str:
     """Return jinja extends statement from given template filename."""
-    if isinstance(template_filename, str):
+    # Using if else instead of ternary because it makes it confusing from
+    # a types perspective and less readable
+    if isinstance(template_filename, str):  # noqa: SIM108  # ternary operator instead of if else
         filename = template_filename
     else:
         filename = "/".join(template_filename)

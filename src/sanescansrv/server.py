@@ -402,9 +402,7 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     return await stream_template(
         "settings_get.html.jinja",
         scanner=scanner,
-        radios="\n".join(
-            get_setting_radio(setting) for setting in scanner_settings
-        ),
+        radios="\n".join(get_setting_radio(setting) for setting in scanner_settings),
     )
 
 
@@ -419,9 +417,7 @@ async def settings_post() -> WerkzeugResponse:
     device = APP_STORAGE["scanners"][scanner]
     scanner_settings = APP_STORAGE["device_settings"][device]
 
-    valid_settings = {
-        setting.name: idx for idx, setting in enumerate(scanner_settings)
-    }
+    valid_settings = {setting.name: idx for idx, setting in enumerate(scanner_settings)}
 
     multi_dict = await request.form
     data = multi_dict.to_dict()
