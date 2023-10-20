@@ -69,9 +69,6 @@ warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
 
-[tool.black]
-line-length = 79
-target-version = ['py38']
 
 [tool.ruff.isort]
 combine-as-imports = true
@@ -80,8 +77,12 @@ combine-as-imports = true
 all = true
 disable_all_dunder_policy = true
 
+[tool.black]
+line-length = 79  # Will not raise errors if too big, see below.
+target-version = ['py38']
+
 [tool.ruff]
-line-length = 79
+line-length = 200  # I don't care about line length a whole lot, just that it's not TOO big.
 fix = true
 
 include = ["*.py", "*.pyi", "**/pyproject.toml"]
