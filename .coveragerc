@@ -1,0 +1,3 @@
+[run]
+source = src
+omit = __init__.py, generate_pages.py
