@@ -91,14 +91,13 @@ async def send_error(
     )
 
 
-async def get_exception_page(code: int, name: str, desc: str) -> Response:
+async def get_exception_page(code: int, name: str, desc: str) -> tuple[AsyncIterator[str], int]:
     """Return Response for exception."""
     resp_body = await send_error(
         page_title=f"{code} {name}",
         error_body=desc,
     )
-    # Response body can be AsyncIterator, type var is not correct
-    return Response(resp_body, status=code)  # type: ignore[type-var]
+    return (resp_body, code)
 
 
 def pretty_exception_name(exc: BaseException) -> str:

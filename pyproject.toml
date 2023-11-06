@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
     "Typing :: Typed",
@@ -69,7 +70,6 @@ warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
 
-
 [tool.ruff.isort]
 combine-as-imports = true
 
@@ -93,14 +93,13 @@ ignore = [
     "D213",  # conflicts with docstrings
 ##    "E203",  # conflicts with black
     "E402",  # module level import not at top of file
-    "E501",  # conflicts with black
+##    "E501",  # conflicts with black
     "S101",  # use of assert for tests and type narrowing
     "D203",
     "D401",  # Imparative mood docstrings
 ]
 
-fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
-unfixable = ["D203"]
+unfixable = []#"D203"]
 
 [tool.ruff.per-file-ignores]
 "src/sanescansrv/htmlgen.py" = [
@@ -109,6 +108,15 @@ unfixable = ["D203"]
 "tests/*" = [
     "D100",  # no module docstring
     "D103",  # no docstrings
+    "E501",  # line too long
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = [
+    "__init__.py",
+    "generate_pages.py",
 ]
 
 [tool.tox]
