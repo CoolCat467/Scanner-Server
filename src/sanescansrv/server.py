@@ -20,7 +20,7 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 __license__ = "GPLv3"
 
 
@@ -61,6 +61,11 @@ logger.set_title(__title__)
 SANE_INITIALIZED = False
 
 Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
+
+if sys.version_info >= (3, 11):
+    BaseExceptionGroup_ = BaseExceptionGroup
+else:
+    BaseExceptionGroup_ = trio.MultiError
 
 
 def stop_sane() -> None:
@@ -614,11 +619,15 @@ def serve_scanner(
         print(f"Serving on http://{location}\n(CTRL + C to quit)")
 
         trio.run(serve_async, app, config_obj)
-    except* OSError:
-        log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
-        sys.exit(1)
-    except* KeyboardInterrupt:
-        log("Shutting down from keyboard interrupt")
+    except BaseExceptionGroup_ as exc:
+        for ex in exc.exceptions:
+            if isinstance(ex, KeyboardInterrupt):
+                log("Shutting down from keyboard interrupt")
+                break
+            if isinstance(ex, OSError):
+                log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
+                sys.exit(1)
+                break
 
 
 def run() -> None:
