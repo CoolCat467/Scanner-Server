@@ -9,10 +9,12 @@ __author__ = "CoolCat467"
 
 
 import pathlib
-from collections.abc import Callable
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from sanescansrv import htmlgen, server
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 TEMPLATE_FOLDER: Final = pathlib.Path("templates")
 TEMPLATE_FUNCTIONS: dict[str, Callable[[], str]] = {}

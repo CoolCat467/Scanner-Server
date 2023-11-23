@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Iterable
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable
 
 
 def indent(level: int, text: str) -> str:

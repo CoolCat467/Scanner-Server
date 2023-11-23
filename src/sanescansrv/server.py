@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import makedirs, path
 from pathlib import Path
-from typing import Any, Final, NamedTuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
 
 import sane
@@ -48,11 +48,13 @@ from hypercorn.trio import serve
 from quart import request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
-from werkzeug import Response as WerkzeugResponse
 from werkzeug.exceptions import HTTPException
 
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
+
+if TYPE_CHECKING:
+    from werkzeug import Response as WerkzeugResponse
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError = sane._sane.error
@@ -444,7 +446,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
 
 @app.get("/")  # type: ignore[type-var]
 async def root_get() -> AsyncIterator[str]:
-    """Main page get request."""
+    """Handle main page GET request."""
     scanners = {}
     default = "none"
 
@@ -465,7 +467,7 @@ async def root_get() -> AsyncIterator[str]:
 @app.post("/")
 @pretty_exception
 async def root_post() -> WerkzeugResponse:
-    """Main page post handling."""
+    """Handle page POST."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
@@ -524,7 +526,7 @@ def get_setting_radio(setting: DeviceSetting) -> str:
 
 @app.get("/settings")  # type: ignore[type-var]
 async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
-    """Settings page get handling."""
+    """Handle settings page GET."""
     scanner = request.args.get("scanner", "none")
 
     if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
@@ -542,7 +544,7 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
 
 @app.post("/settings")
 async def settings_post() -> WerkzeugResponse:
-    """Settings page post handling."""
+    """Handle settings page POST."""
     scanner = request.args.get("scanner", "none")
 
     if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
@@ -627,7 +629,6 @@ def serve_scanner(
             if isinstance(ex, OSError):
                 log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
                 sys.exit(1)
-                break
 
 
 def run() -> None:
