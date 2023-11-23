@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanescansrv"
-version = "2.1.4"
+dynamic = ["version"]
 authors = [
   { name="CoolCat467" },
 ]
@@ -32,6 +32,9 @@ dependencies = [
     "trio~=0.23.0",
     "Werkzeug~=3.0.1"
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "sanescansrv.server.__version__"}
 
 [project.urls]
 "Homepage" = "https://github.com/CoolCat467/Scanner-Server"

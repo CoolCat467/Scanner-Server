@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if just_started %}Just Started Scanning{% else %}Scan Is In Progress{% endif %}</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <meta http-equiv="refresh" content="{{ refreshes_after }}">
+  </head>
+  <body>
+    <div class="content">
+      <h1>{% if just_started %}Just Started Scanning{% else %}Scan Is In Progress{% endif %}</h1>
+      <div class="box">
+        <p>{% if just_started %}Just Started.{% else %}<strong>{{ (progress[0] / progress[1] * 100)|round(2) }}%</strong> Complete{% endif %}</p>
+        <p>Scan is estimated to be done in <strong>
+          {{ estimated_wait }}
+        </strong> second{% if estimated_wait > 1 %}s{% elif estimated_wait == 0 %}s{% endif %}.</p>
+      </div>
+      <hr>
+      <i>This page will automatically refresh after {{ refreshes_after }} second{% if refreshes_after > 1 %}s{% elif refreshes_after == 0 %}s{% endif %}.</i>
+      <i>If it doesn't, please click <a href="/scan-status">this link</a>.</i>
+    </div>
+    <footer>
+      <i>If you're reading this, the web server was installed correctly.™</i>
+      <hr>
+      <p>Sane Scanner Web Server v2.2.0 © CoolCat467</p>
+    </footer>
+  </body>
+</html>

@@ -20,30 +20,32 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.1.4"
+__version__ = "2.2.0"
 __license__ = "GPLv3"
 
 
 import contextlib
 import functools
+import math
 import socket
+import statistics
 import sys
 import time
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable
 from configparser import ConfigParser
 from dataclasses import dataclass
-from functools import partial
+from enum import IntEnum, auto
 from os import makedirs, path
 from pathlib import Path
-from typing import Any, Final, TypeVar, cast
+from typing import Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
 
 import sane
 import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
-from quart import Response, request
+from quart import request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug import Response as WerkzeugResponse
@@ -283,7 +285,11 @@ def display_progress(current: int, total: int) -> None:
     print(f"{current / total * 100:.2f}%")
 
 
-def preform_scan(device_name: str, out_type: str = "png") -> str:
+def preform_scan(
+    device_name: str,
+    out_type: str = "png",
+    progress: Callable[[int, int], object] = display_progress,
+) -> str:
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
@@ -303,11 +309,133 @@ def preform_scan(device_name: str, out_type: str = "png") -> str:
                     continue
                 value = int(value)
             setattr(device, name, value)
-        with device.scan(display_progress) as image:
+        with device.scan(progress) as image:
             # bounds = image.getbbox()
             image.save(filepath, out_type)
 
     return filename
+
+
+class ScanProgress(NamedTuple):
+    """Scan Progress Data."""
+
+    current: int
+    total: int
+
+
+class ScanStatus(IntEnum):
+    """Scan Status Data."""
+
+    STARTED = auto()
+    IN_PROGRESS = auto()
+    DONE = auto()
+
+
+def fake_preform_scan(
+    _device_name: str,
+    _out_type: str = "png",
+    progress: Callable[[int, int], object] = display_progress,
+) -> str:
+    """Perform fake scan."""
+    total = 100
+    for current in range(total):
+        progress(current, total)
+        time.sleep(0.05)
+    return "favicon.ico"
+
+
+SCAN_LOCK = trio.Lock()
+
+
+async def preform_scan_async(
+    device_name: str,
+    out_type: str,
+    task_status: trio.TaskStatus[Any] = trio.TASK_STATUS_IGNORED,
+) -> str:
+    """Scan using device and return path."""
+    if out_type not in {"pnm", "tiff", "png", "jpeg"}:
+        raise ValueError("Output type must be pnm, tiff, png, or jpeg")
+
+    delays = []
+    last_time = 0
+
+    def progress(current: int, total: int) -> None:
+        """Scan is in progress."""
+        nonlocal last_time
+        prev_last, last_time = last_time, time.perf_counter_ns()
+        delays.append(last_time - prev_last)
+        APP_STORAGE["scan_status"] = (
+            ScanStatus.IN_PROGRESS,
+            ScanProgress(current, total),
+            delays,
+        )
+
+    async with SCAN_LOCK:
+        APP_STORAGE["scan_status"] = (ScanStatus.STARTED,)
+        task_status.started()
+        last_time = time.perf_counter_ns()
+        filename = await trio.to_thread.run_sync(
+            preform_scan,
+            ##            fake_preform_scan,
+            device_name,
+            out_type,
+            progress,
+            thread_name="preform_scan_async",
+        )
+        APP_STORAGE["scan_status"] = (
+            ScanStatus.DONE,
+            filename,
+        )
+    return filename
+
+
+@app.get("/scan-status")  # type: ignore[type-var]
+@pretty_exception
+async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
+    """Handle scan status GET request."""
+    raw_status = APP_STORAGE.get("scan_status")
+    if raw_status is None:
+        return await send_error(
+            "No Scan Currently Running",
+            "There are no scan requests running currently. "
+            "Start one by pressing the `Scan!` button on the main page.",
+        )
+    assert raw_status is not None
+
+    status, *data = raw_status
+
+    if status == ScanStatus.DONE:
+        filename = data[0]
+        APP_STORAGE["scan_status"] = None
+        return app.redirect(f"/{filename}")
+
+    progress: ScanProgress | None = None
+    time_deltas_ns: list[int] | None = None
+    delay = 3
+    estimated_wait: int = 9999
+
+    if status == ScanStatus.IN_PROGRESS:
+        progress, time_deltas_ns = data
+
+        assert isinstance(progress, ScanProgress)
+        assert isinstance(time_deltas_ns, list)
+
+        # Estimate when the scan will be done
+        # Nanoseconds
+        average_wait_ns = statistics.mean(time_deltas_ns)
+        delta_total = progress.total - progress.current
+        estimated_wait_ns = delta_total * average_wait_ns
+        # nanoseconds -> seconds
+        estimated_wait = math.ceil(estimated_wait_ns // 1e9)
+        delay = max(delay, min(5, estimated_wait))
+
+    return await stream_template(
+        "scan-status_get.html.jinja",
+        just_started=status == ScanStatus.STARTED,
+        progress=progress,
+        estimated_wait=estimated_wait,
+        refreshes_after=delay,
+    )
 
 
 @app.get("/")  # type: ignore[type-var]
@@ -332,7 +460,7 @@ async def root_get() -> AsyncIterator[str]:
 
 @app.post("/")
 @pretty_exception
-async def root_post() -> Response | WerkzeugResponse:
+async def root_post() -> WerkzeugResponse:
     """Main page post handling."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
@@ -340,15 +468,21 @@ async def root_post() -> Response | WerkzeugResponse:
     # Validate input
     img_format = data.get("img_format", "png")
     device = APP_STORAGE["scanners"].get(data.get("scanner"), "none")
+    img_format = "png"
 
     if img_format not in {"pnm", "tiff", "png", "jpeg"}:
         return app.redirect("/")
     if device == "none":
         return app.redirect("/scanners")
 
-    filename = preform_scan(device, img_format)
+    nursery: trio.Nursery | None = APP_STORAGE.get("nursery")
+    assert isinstance(nursery, trio.Nursery), "Must be nursery"
 
-    return app.redirect(f"/{filename}")
+    await nursery.start(preform_scan_async, device, img_format)
+
+    ##    filename = await preform_scan_async(device, img_format)
+    ##    return app.redirect(f"/{filename}")
+    return app.redirect("/scan-status")
 
 
 @app.get("/update_scanners")
@@ -434,7 +568,14 @@ async def settings_post() -> WerkzeugResponse:
     return app.redirect(request.url)
 
 
-async def serve_scanner(
+async def serve_async(app: QuartTrio, config_obj: Config) -> None:
+    """Serve app within a nursery."""
+    async with trio.open_nursery(strict_exception_groups=True) as nursery:
+        APP_STORAGE["nursery"] = nursery
+        await nursery.start(serve, app, config_obj)
+
+
+def serve_scanner(
     root_dir: str,
     device_name: str,
     port: int,
@@ -476,11 +617,11 @@ async def serve_scanner(
 
         print(f"Serving on http://{location}\n(CTRL + C to quit)")
 
-        await serve(app, config_obj)
-    except OSError:
+        trio.run(serve_async, app, config_obj)
+    except* OSError:
         log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
         sys.exit(1)
-    except KeyboardInterrupt:
+    except* KeyboardInterrupt:
         log("Shutting down from keyboard interrupt")
 
 
@@ -541,9 +682,7 @@ def run() -> None:
     if hostname != "None":
         ip_address = hostname
 
-    trio.run(
-        partial(serve_scanner, root_dir, target, port, ip_addr=ip_address),
-    )
+    serve_scanner(root_dir, target, port, ip_addr=ip_address)
 
 
 def sane_run() -> None:

@@ -340,7 +340,8 @@ def jinja_comment(value: str) -> str:
 def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
     """Generate jinja if / if else block from dictionary.
 
-    Keys are conditions to check, values are content if true
+    Keys are conditions to check, values are content if true.
+    "" key means else block.
     """
     contents = []
     count = 0
@@ -525,3 +526,21 @@ def jinja_extends(template_filename: str | Iterable[str]) -> str:
 def jinja_super_block() -> str:
     """Return jinja super() expression."""
     return jinja_expression("super()")
+
+
+def jinja_number_plural(
+    numeric_value: str,
+    word: str,
+) -> str:
+    """Return word pluralized given numeric variable.
+
+    If value of numeric value is not > 1, return `{word}`
+    If value is > 1, return `{word}s`
+    """
+    return word + jinja_if_block(
+        {
+            f"{numeric_value} > 1": "s",
+            f"{numeric_value} == 0": "s",
+        },
+        block=False,
+    )

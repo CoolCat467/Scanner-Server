@@ -390,6 +390,76 @@ def generate_settings_get() -> str:
     return template(scanner, html)
 
 
+@save_template_as("scan-status_get")
+def generate_scan_status_get() -> str:
+    """Generate /scan-status GET page."""
+    refreshes_after = htmlgen.jinja_expression("refreshes_after")
+    estimated_wait = htmlgen.jinja_expression("estimated_wait")
+
+    percent = htmlgen.jinja_expression("(progress[0] / progress[1] * 100)|round(2)")
+
+    title = htmlgen.jinja_if_block(
+        {
+            "just_started": "Just Started Scanning",
+            "": "Scan Is In Progress",
+        },
+        block=False,
+    )
+
+    head = htmlgen.tag("meta", http_equiv="refresh", content=refreshes_after)
+
+    percent_complete = htmlgen.wrap_tag("strong", f"{percent}%", block=False)
+
+    estimate_strong = htmlgen.wrap_tag("strong", estimated_wait)
+    estimate_plural = htmlgen.jinja_number_plural("estimated_wait", "second")
+    estimate = f"{estimate_strong} {estimate_plural}"
+
+    refresh_link = htmlgen.create_link("/scan-status", "this link")
+
+    refresh_time_plural = htmlgen.jinja_number_plural("refreshes_after", "second")
+    refresh_time_display = f"{refreshes_after} {refresh_time_plural}"
+
+    content = "\n".join(
+        (
+            htmlgen.wrap_tag(
+                "p",
+                htmlgen.jinja_if_block(
+                    {
+                        "just_started": "Just Started.",
+                        "": f"{percent_complete} Complete",
+                    },
+                    block=False,
+                ),
+                block=False,
+            ),
+            htmlgen.wrap_tag(
+                "p",
+                f"Scan is estimated to be done in {estimate}.",
+                block=False,
+            ),
+        ),
+    )
+
+    body = "\n".join(
+        (
+            htmlgen.contain_in_box(content),
+            "<hr>",
+            htmlgen.wrap_tag(
+                "i",
+                f"This page will automatically refresh after {refresh_time_display}.",
+                block=False,
+            ),
+            htmlgen.wrap_tag(
+                "i",
+                f"If it doesn't, please click {refresh_link}.",
+                block=False,
+            ),
+        ),
+    )
+
+    return template(title, body, head=head)
+
+
 def run() -> None:
     """Generate all page templates and static files."""
     for filename, function in TEMPLATE_FUNCTIONS.items():
