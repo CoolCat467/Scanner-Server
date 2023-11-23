@@ -375,8 +375,7 @@ async def preform_scan_async(
         task_status.started()
         last_time = time.perf_counter_ns()
         filename = await trio.to_thread.run_sync(
-            preform_scan,
-            ##            fake_preform_scan,
+            preform_scan,  # fake_preform_scan,
             device_name,
             out_type,
             progress,
@@ -468,7 +467,6 @@ async def root_post() -> WerkzeugResponse:
     # Validate input
     img_format = data.get("img_format", "png")
     device = APP_STORAGE["scanners"].get(data.get("scanner"), "none")
-    img_format = "png"
 
     if img_format not in {"pnm", "tiff", "png", "jpeg"}:
         return app.redirect("/")
@@ -480,8 +478,6 @@ async def root_post() -> WerkzeugResponse:
 
     await nursery.start(preform_scan_async, device, img_format)
 
-    ##    filename = await preform_scan_async(device, img_format)
-    ##    return app.redirect(f"/{filename}")
     return app.redirect("/scan-status")
 
 
