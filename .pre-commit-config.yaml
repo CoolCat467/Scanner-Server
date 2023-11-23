@@ -37,8 +37,8 @@ repos:
       - id: ruff
         types: [file]
         types_or: [python, pyi, toml]
-  - repo: https://gitlab.com/brettops/tools/badgie
-    rev: "0.9.0"
+  - repo: https://github.com/CoolCat467/badgie
+    rev: v0.9.3
     hooks:
       - id: badgie
   - repo: https://github.com/codespell-project/codespell
