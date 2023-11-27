@@ -45,6 +45,7 @@ import sane
 import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
+from PIL import Image
 from quart import request
 from quart.templating import stream_template
 from quart_trio import QuartTrio
@@ -679,7 +680,8 @@ def run() -> None:
         with open(conf_file, "w", encoding="utf-8") as config_file:
             config.write(config_file)
 
-    print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}\n")
+    print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}")
+    print(f"PIL Image Version: {Image.__version__}\n")
 
     if target == "None":
         print("No default device in config file.")
