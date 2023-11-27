@@ -623,13 +623,18 @@ def serve_scanner(
 
         trio.run(serve_async, app, config_obj)
     except BaseExceptionGroup_ as exc:
+        caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
                 log("Shutting down from keyboard interrupt")
+                caught = True
                 break
             if isinstance(ex, OSError):
                 log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
+                caught = True
                 sys.exit(1)
+        if not caught:
+            raise
 
 
 def run() -> None:
