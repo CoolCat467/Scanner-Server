@@ -420,7 +420,6 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
 
     if status == ScanStatus.DONE:
         filename = data[0]
-        APP_STORAGE["scan_status"] = None
         return app.redirect(f"/{filename}")
 
     progress: ScanProgress | None = None
@@ -472,9 +471,9 @@ async def root_get() -> AsyncIterator[str]:
     )
 
 
-@app.post("/")
+@app.post("/")  # type: ignore[type-var]
 @pretty_exception
-async def root_post() -> WerkzeugResponse:
+async def root_post() -> WerkzeugResponse | AsyncIterator[str]:
     """Handle page POST."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
@@ -488,6 +487,18 @@ async def root_post() -> WerkzeugResponse:
     if device == "none":
         return app.redirect("/scanners")
 
+    raw_status = APP_STORAGE.get("scan_status")
+
+    if raw_status is not None:
+        status, *_data = raw_status
+        if status != ScanStatus.DONE:
+            return await send_error(
+                "Scan Already Currently Running",
+                "There is a scan request already running. Please wait for the previous scan to complete.",
+                return_link="/scan-status",
+            )
+        APP_STORAGE["scan_status"] = None
+
     nursery: trio.Nursery | None = APP_STORAGE.get("nursery")
     assert isinstance(nursery, trio.Nursery), "Must be nursery"
 
@@ -497,6 +508,7 @@ async def root_post() -> WerkzeugResponse:
 
 
 @app.get("/update_scanners")
+@pretty_exception
 async def update_scanners_get() -> WerkzeugResponse:
     """Update scanners get handling."""
     APP_STORAGE["scanners"] = get_devices()

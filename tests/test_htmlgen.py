@@ -616,3 +616,7 @@ def test_jinja_extends_path() -> None:
 
 def test_jinja_super_block() -> None:
     assert htmlgen.jinja_super_block() == "{{ super() }}"
+
+
+def test_jinja_number_plural() -> None:
+    assert htmlgen.jinja_number_plural(3, "second") == "second{% if 3 > 1 %}s{% elif 3 == 0 %}s{% endif %}"
