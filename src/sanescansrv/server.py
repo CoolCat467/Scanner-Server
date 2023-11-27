@@ -239,15 +239,23 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         return []
 
     for result in device.get_options():
+        ##        print(f'\n{result = }')
         if not result[1] or "button" in result[1]:
             continue
         option = sane.Option(result, device)
         if not option.is_settable():
+            ##            print("> Not settable")
             continue
 
-        constraints: list[str]
+        constraints: list[str] = []
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
-        if isinstance(option.constraint, tuple):
+        ##        print(f'{type_ = }')
+        if type_ not in {"INT", "STRING", "BOOL"}:
+            ##            print(f'type {type_!r} is invalid')
+            continue
+        if type_ == "BOOL":
+            constraints = ["1", "0"]
+        elif isinstance(option.constraint, tuple):
             if isinstance(option.constraint[0], float):
                 continue
             if option.constraint[2] == 0:
@@ -256,10 +264,6 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
             if len(range_) > 5:
                 continue
             constraints = [str(i) for i in range_]
-        if type_ not in {"INT", "STRING", "BOOL"}:
-            continue
-        if type_ == "BOOL":
-            constraints = ["1", "0"]
         elif option.constraint is None:
             continue
         else:
@@ -270,17 +274,19 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         default = "None"
         with contextlib.suppress(AttributeError, ValueError):
             default = str(getattr(device, option.py_name))
+        ##        print(f'{default = }')
 
         unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
 
         settings.append(
             DeviceSetting(
-                option.name,
-                option.title,
-                constraints,
-                default,
-                unit,
-                option.desc,
+                name=option.name,
+                title=option.title,
+                options=constraints,
+                default=default,
+                unit=unit,
+                desc=option.desc,
+                ##                set=default,
             ),
         )
 
@@ -310,12 +316,13 @@ def preform_scan(
     with sane.open(device_name) as device:
         for setting in APP_STORAGE["device_settings"][device_name]:
             name = setting.name.replace("-", "_")
+            if setting.set is None:
+                continue
             value: str | int = setting.set
             if sane.TYPE_STR[device[name].type] in ints:
                 assert isinstance(value, str), f"{value = } {type(value) = }"
-                if not value.isdigit():
-                    continue
-                value = int(value)
+                if value.isdigit():
+                    value = int(value)
             setattr(device, name, value)
         with device.scan(progress) as image:
             # bounds = image.getbbox()
@@ -493,7 +500,7 @@ async def root_post() -> WerkzeugResponse:
 async def update_scanners_get() -> WerkzeugResponse:
     """Update scanners get handling."""
     APP_STORAGE["scanners"] = get_devices()
-    for device in APP_STORAGE["scanners"].values():
+    for _model, device in APP_STORAGE["scanners"].items():
         APP_STORAGE["device_settings"][device] = get_device_settings(device)
     return app.redirect("scanners")
 
@@ -517,11 +524,12 @@ def get_setting_radio(setting: DeviceSetting) -> str:
     options = {x.title(): x for x in setting.options}
     if set(options.keys()) == {"1", "0"}:
         options = {"True": "1", "False": "0"}
+    default = setting.default if setting.set is None else setting.set
     return htmlgen.radio_select_box(
-        setting.name,
-        options,
-        setting.set,
-        f"{setting.title} - {setting.desc}",
+        submit_name=setting.name,
+        options=options,
+        default=default,
+        box_title=f"{setting.title} - {setting.desc}",
     )
 
 
