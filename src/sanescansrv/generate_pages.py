@@ -399,6 +399,7 @@ def generate_scan_status_get() -> str:
     estimated_wait = htmlgen.jinja_expression("estimated_wait")
 
     percent = htmlgen.jinja_expression("(progress[0] / progress[1] * 100)|round(2)")
+    is_done = "progress[0] == progress[1]"
 
     title = htmlgen.jinja_if_block(
         {
@@ -412,7 +413,7 @@ def generate_scan_status_get() -> str:
 
     percent_complete = htmlgen.wrap_tag("strong", f"{percent}%", block=False)
 
-    estimate_strong = htmlgen.wrap_tag("strong", estimated_wait)
+    estimate_strong = htmlgen.wrap_tag("strong", estimated_wait, block=False)
     estimate_plural = htmlgen.jinja_number_plural("estimated_wait", "second")
     estimate = f"{estimate_strong} {estimate_plural}"
 
@@ -428,6 +429,7 @@ def generate_scan_status_get() -> str:
                 htmlgen.jinja_if_block(
                     {
                         "just_started": "Just Started.",
+                        is_done: "Just finished, saving file...",
                         "": f"{percent_complete} Complete",
                     },
                     block=False,
