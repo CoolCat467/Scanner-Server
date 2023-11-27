@@ -312,7 +312,7 @@ def preform_scan(
             name = setting.name.replace("-", "_")
             value: str | int = setting.set
             if sane.TYPE_STR[device[name].type] in ints:
-                assert isinstance(value, str)
+                assert isinstance(value, str), f"{value = } {type(value) = }"
                 if not value.isdigit():
                     continue
                 value = int(value)
