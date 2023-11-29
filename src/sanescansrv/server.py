@@ -65,10 +65,8 @@ SANE_INITIALIZED = False
 
 Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
 
-if sys.version_info >= (3, 11):
-    BaseExceptionGroup_ = BaseExceptionGroup
-else:
-    BaseExceptionGroup_ = trio.MultiError
+if sys.version_info < (3, 11):
+    from exceptiongroup import BaseExceptionGroup
 
 
 def stop_sane() -> None:
@@ -642,7 +640,7 @@ def serve_scanner(
         print(f"Serving on http://{location}\n(CTRL + C to quit)")
 
         trio.run(serve_async, app, config_obj)
-    except BaseExceptionGroup_ as exc:
+    except BaseExceptionGroup as exc:
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
