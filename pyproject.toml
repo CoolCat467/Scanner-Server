@@ -155,7 +155,7 @@ omit = [
 [tool.coverage.report]
 precision = 1
 skip_covered = true
-exclude_lines = [
+exclude_also = [
     "pragma: no cover",
     "abc.abstractmethod",
     "if TYPE_CHECKING.*:",
