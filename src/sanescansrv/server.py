@@ -644,7 +644,7 @@ def serve_scanner(
             "worker_class": "trio",
             "errorlog": logs_path / time.strftime("log_%Y_%m_%d.log"),
         }
-        # app.config["SERVER_NAME"] = {location} | hostnames
+        app.config["SERVER_NAME"] = location if not hostnames else hostnames[0]
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
         app.jinja_options = {
@@ -695,7 +695,7 @@ def run() -> None:
 
     target = "None"
     port = 3004
-    hostnames = "None"
+    hostnames: list[str] = []
 
     rewrite = True
     if config.has_section("main"):
@@ -713,7 +713,9 @@ def run() -> None:
         else:
             rewrite = True
         if config.has_option("main", "hostnames"):
-            hostnames = set(config.get("main", "hostnames").split(",")) - {"None"}
+            hostnames = config.get("main", "hostnames").split(",")
+            if "None" in hostnames:
+                hostnames.remove("None")
         else:
             rewrite = True
 
