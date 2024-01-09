@@ -20,7 +20,7 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Web Server"
 __author__ = "CoolCat467"
-__version__ = "2.2.2"
+__version__ = "2.2.3"
 __license__ = "GPLv3"
 
 
@@ -704,7 +704,9 @@ def run() -> None:
             config.write(config_file)
 
     print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}")
-    print(f"PIL Image Version: {Image.__version__}\n")
+    pil_version = getattr(Image, "__version__", None)
+    assert pil_version is not None, "PIL should have a version!"
+    print(f"PIL Image Version: {pil_version}\n")
 
     if target == "None":
         print("No default device in config file.")
