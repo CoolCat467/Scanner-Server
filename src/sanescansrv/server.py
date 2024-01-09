@@ -18,9 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
 
-__title__ = "Sane Scanner Web Server"
+__title__ = "Sane Scanner Webserver"
 __author__ = "CoolCat467"
-__version__ = "2.2.3"
+__version__ = "3.0.0"
 __license__ = "GPLv3"
 
 
@@ -32,11 +32,11 @@ import statistics
 import sys
 import time
 import traceback
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from configparser import ConfigParser
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from os import makedirs, path
+from os import getenv, makedirs, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
@@ -57,8 +57,17 @@ from sanescansrv.logger import log
 if TYPE_CHECKING:
     from werkzeug import Response as WerkzeugResponse
 
+HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
+XDG_DATA_HOME: Final = trio.Path(getenv("XDG_DATA_HOME", HOME / ".local" / "share"))
+XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
+
+FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
+CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
+DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
+MAIN_CONFIG: Final = CONFIG_PATH / f"{FILE_TITLE}_config.ini"
+
 # For some reason error class is not exposed nicely; Let's fix that
-SaneError = sane._sane.error
+SaneError: Final = sane._sane.error
 logger.set_title(__title__)
 
 SANE_INITIALIZED = False
@@ -67,6 +76,16 @@ Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
 
 if sys.version_info < (3, 11):
     from exceptiongroup import BaseExceptionGroup
+
+
+def combine_end(data: Iterable[str], final: str = "and") -> str:
+    """Return comma separated string of list of strings with last item phrased properly."""
+    data = list(data)
+    if len(data) >= 2:
+        data[-1] = f"{final} {data[-1]}"
+    if len(data) > 2:
+        return ", ".join(data)
+    return " ".join(data)
 
 
 def stop_sane() -> None:
@@ -598,15 +617,23 @@ async def serve_async(app: QuartTrio, config_obj: Config) -> None:
 
 
 def serve_scanner(
-    root_dir: str,
     device_name: str,
     port: int,
     *,
     ip_addr: str | None = None,
+    hostnames: set[str] | None = None,
 ) -> None:
     """Asynchronous Entry Point."""
     if not ip_addr:
         ip_addr = find_ip()
+
+    if not hostnames:
+        hostnames = set()
+
+    logs_path = DATA_PATH / "logs"
+    if not path.exists(logs_path):
+        makedirs(logs_path)
+    print(f"Logs Path: {str(logs_path)!r}\n")
 
     try:
         # Add more information about the address
@@ -615,13 +642,9 @@ def serve_scanner(
         config = {
             "bind": [location],
             "worker_class": "trio",
-            "errorlog": path.join(
-                root_dir,
-                "logs",
-                time.strftime("log_%Y_%m_%d.log"),
-            ),
+            "errorlog": logs_path / time.strftime("log_%Y_%m_%d.log"),
         }
-        app.config["SERVER_NAME"] = location
+        # app.config["SERVER_NAME"] = {location} | hostnames
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
         app.jinja_options = {
@@ -648,6 +671,7 @@ def serve_scanner(
                 caught = True
                 break
             if isinstance(ex, OSError):
+                traceback.print_exc()
                 log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
                 caught = True
                 sys.exit(1)
@@ -657,17 +681,21 @@ def serve_scanner(
 
 def run() -> None:
     """Run scanner server."""
-    root_dir = path.abspath(path.expanduser(path.join("~", ".sanescansrv")))
-    if not path.exists(root_dir):
-        makedirs(root_dir, exist_ok=True)
+    pil_version = getattr(Image, "__version__", None)
+    assert pil_version is not None, "PIL should have a version!"
+    print(f"PIL Image Version: {pil_version}\n")
+
+    if not path.exists(CONFIG_PATH):
+        makedirs(CONFIG_PATH)
+
+    print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
 
     config = ConfigParser()
-    conf_file = path.join(root_dir, "config.ini")
-    config.read(conf_file)
+    config.read(MAIN_CONFIG)
 
     target = "None"
     port = 3004
-    hostname = "None"
+    hostnames = "None"
 
     rewrite = True
     if config.has_section("main"):
@@ -684,8 +712,8 @@ def run() -> None:
                 rewrite = False
         else:
             rewrite = True
-        if config.has_option("main", "hostname"):
-            hostname = config.get("main", "hostname")
+        if config.has_option("main", "hostnames"):
+            hostnames = set(config.get("main", "hostnames").split(",")) - {"None"}
         else:
             rewrite = True
 
@@ -696,26 +724,25 @@ def run() -> None:
                 "main": {
                     "printer": target,
                     "port": port,
-                    "hostname": hostname,
+                    "hostnames": ",".join(hostnames) if hostnames else "None",
                 },
             },
         )
-        with open(conf_file, "w", encoding="utf-8") as config_file:
+        with open(MAIN_CONFIG, "w", encoding="utf-8") as config_file:
             config.write(config_file)
 
-    print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}")
-    pil_version = getattr(Image, "__version__", None)
-    assert pil_version is not None, "PIL should have a version!"
-    print(f"PIL Image Version: {pil_version}\n")
+    disp_hostnames = combine_end(sorted(hostnames)) if hostnames else "None"
+    print(f"Default Printer: {target}\nPort: {port}\nHostnames: {disp_hostnames}\n")
 
     if target == "None":
-        print("No default device in config file.")
+        print("No default device in config file.\n")
 
-    ip_address = None
-    if hostname != "None":
-        ip_address = hostname
+    ##ip_address = None
+    ##if hostnames:
+    ##    hostnames = []
+    ##    ip_address = hostname
 
-    serve_scanner(root_dir, target, port, ip_addr=ip_address)
+    serve_scanner(target, port, hostnames=hostnames)
 
 
 def sane_run() -> None:
