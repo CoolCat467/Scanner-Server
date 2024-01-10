@@ -621,14 +621,14 @@ def serve_scanner(
     port: int,
     *,
     ip_addr: str | None = None,
-    hostnames: set[str] | None = None,
+    hypercorn: dict[str, str] | None = None,
 ) -> None:
     """Asynchronous Entry Point."""
     if not ip_addr:
         ip_addr = find_ip()
 
-    if not hostnames:
-        hostnames = set()
+    if not hypercorn:
+        hypercorn = {}
 
     logs_path = DATA_PATH / "logs"
     if not path.exists(logs_path):
@@ -642,9 +642,11 @@ def serve_scanner(
         config = {
             "bind": [location],
             "worker_class": "trio",
+            "accesslog": "-",
             "errorlog": logs_path / time.strftime("log_%Y_%m_%d.log"),
         }
-        app.config["SERVER_NAME"] = location if not hostnames else hostnames[0]
+        config.update(hypercorn)
+
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
         app.jinja_options = {
@@ -695,7 +697,6 @@ def run() -> None:
 
     target = "None"
     port = 3004
-    hostnames: list[str] = []
 
     rewrite = True
     if config.has_section("main"):
@@ -712,12 +713,11 @@ def run() -> None:
                 rewrite = False
         else:
             rewrite = True
-        if config.has_option("main", "hostnames"):
-            hostnames = config.get("main", "hostnames").split(",")
-            if "None" in hostnames:
-                hostnames.remove("None")
-        else:
-            rewrite = True
+
+    hypercorn: dict[str, str] = {}
+    if config.has_section("hypercorn"):
+        for option in config.options("hypercorn"):
+            hypercorn[option] = config.get("hypercorn", option)
 
     if rewrite:
         config.clear()
@@ -726,25 +726,19 @@ def run() -> None:
                 "main": {
                     "printer": target,
                     "port": port,
-                    "hostnames": ",".join(hostnames) if hostnames else "None",
                 },
+                "hypercorn": hypercorn,
             },
         )
         with open(MAIN_CONFIG, "w", encoding="utf-8") as config_file:
             config.write(config_file)
 
-    disp_hostnames = combine_end(sorted(hostnames)) if hostnames else "None"
-    print(f"Default Printer: {target}\nPort: {port}\nHostnames: {disp_hostnames}\n")
+    print(f"Default Printer: {target}\nPort: {port}\n")
 
     if target == "None":
         print("No default device in config file.\n")
 
-    ##ip_address = None
-    ##if hostnames:
-    ##    hostnames = []
-    ##    ip_address = hostname
-
-    serve_scanner(target, port, hostnames=hostnames)
+    serve_scanner(target, port, hypercorn=hypercorn)
 
 
 def sane_run() -> None:
