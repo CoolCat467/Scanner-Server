@@ -37,7 +37,7 @@ dependencies = [
     "python-sane~=2.9.1",
     "quart~=0.19.4",
     "quart-trio~=0.11.1",
-    "trio~=0.23.2",
+    "trio~=0.24.0",
     "Werkzeug~=3.0.1",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
 ]
