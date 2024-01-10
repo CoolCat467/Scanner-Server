@@ -40,6 +40,7 @@ dependencies = [
     "trio~=0.23.2",
     "Werkzeug~=3.0.1",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
+    'tomli >= 2.0.1; python_version < "3.11"',
 ]
 
 [tool.setuptools.dynamic]

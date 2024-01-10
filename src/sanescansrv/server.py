@@ -33,7 +33,6 @@ import sys
 import time
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
-from configparser import ConfigParser
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import getenv, makedirs, path
@@ -54,6 +53,12 @@ from werkzeug.exceptions import HTTPException
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
 
+if sys.version_info < (3, 11):
+    import tomli as tomllib
+    from exceptiongroup import BaseExceptionGroup
+else:
+    import tomllib
+
 if TYPE_CHECKING:
     from werkzeug import Response as WerkzeugResponse
 
@@ -64,7 +69,7 @@ XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
 FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
 CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
 DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
-MAIN_CONFIG: Final = CONFIG_PATH / f"{FILE_TITLE}_config.ini"
+MAIN_CONFIG: Final = CONFIG_PATH / f"{FILE_TITLE}_config.toml"
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -73,19 +78,6 @@ logger.set_title(__title__)
 SANE_INITIALIZED = False
 
 Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import BaseExceptionGroup
-
-
-def combine_end(data: Iterable[str], final: str = "and") -> str:
-    """Return comma separated string of list of strings with last item phrased properly."""
-    data = list(data)
-    if len(data) >= 2:
-        data[-1] = f"{final} {data[-1]}"
-    if len(data) > 2:
-        return ", ".join(data)
-    return " ".join(data)
 
 
 def stop_sane() -> None:
@@ -102,6 +94,16 @@ def restart_sane() -> None:
     stop_sane()
     sane.init()
     SANE_INITIALIZED = True
+
+
+def combine_end(data: Iterable[str], final: str = "and") -> str:
+    """Return comma separated string of list of strings with last item phrased properly."""
+    data = list(data)
+    if len(data) >= 2:
+        data[-1] = f"{final} {data[-1]}"
+    if len(data) > 2:
+        return ", ".join(data)
+    return " ".join(data)
 
 
 async def send_error(
@@ -256,19 +258,19 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         return []
 
     for result in device.get_options():
-        ##        print(f'\n{result = }')
+        # print(f'\n{result = }')
         if not result[1] or "button" in result[1]:
             continue
         option = sane.Option(result, device)
         if not option.is_settable():
-            ##            print("> Not settable")
+            # print("> Not settable")
             continue
 
         constraints: list[str] = []
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
-        ##        print(f'{type_ = }')
+        # print(f'{type_ = }')
         if type_ not in {"INT", "STRING", "BOOL"}:
-            ##            print(f'type {type_!r} is invalid')
+            # print(f'type {type_!r} is invalid')
             continue
         if type_ == "BOOL":
             constraints = ["1", "0"]
@@ -291,7 +293,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         default = "None"
         with contextlib.suppress(AttributeError, ValueError):
             default = str(getattr(device, option.py_name))
-        ##        print(f'{default = }')
+        # print(f'{default = }')
 
         unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
 
@@ -303,7 +305,6 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 default=default,
                 unit=unit,
                 desc=option.desc,
-                ##                set=default,
             ),
         )
 
@@ -621,7 +622,7 @@ def serve_scanner(
     port: int,
     *,
     ip_addr: str | None = None,
-    hypercorn: dict[str, str] | None = None,
+    hypercorn: dict[str, object] | None = None,
 ) -> None:
     """Asynchronous Entry Point."""
     if not ip_addr:
@@ -639,13 +640,26 @@ def serve_scanner(
         # Add more information about the address
         location = f"{ip_addr}:{port}"
 
-        config = {
-            "bind": [location],
-            "worker_class": "trio",
+        # Hypercorn config setup
+        config: dict[str, object] = {
             "accesslog": "-",
             "errorlog": logs_path / time.strftime("log_%Y_%m_%d.log"),
         }
+        # Load things from user controlled toml file for hypercorn
         config.update(hypercorn)
+        # Override a few particularly important details if set by user
+        config.update(
+            {
+                "worker_class": "trio",
+            },
+        )
+        # Make sure location is in bind
+        raw_bound = config.get("bind", [])
+        if not isinstance(raw_bound, Iterable):
+            raise ValueError("main.bind must be an iterable object (set in config file)!")
+        bound = set()
+        bound |= {location}
+        config["bind"] = list(bound)
 
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
@@ -689,49 +703,31 @@ def run() -> None:
 
     if not path.exists(CONFIG_PATH):
         makedirs(CONFIG_PATH)
+    if not path.exists(MAIN_CONFIG):
+        with open(MAIN_CONFIG, "w", encoding="utf-8") as fp:
+            fp.write(
+                """[main]
+# Name of printer to use on default
+printer = "None"
+# Port server should run on
+port = 3004
+
+[hypercorn]
+# See https://hypercorn.readthedocs.io/en/latest/how_to_guides/configuring.html#configuration-options
+use_reloader = false""",
+            )
 
     print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
 
-    config = ConfigParser()
-    config.read(MAIN_CONFIG)
+    with open(MAIN_CONFIG, "rb") as fp:
+        config = tomllib.load(fp)
 
-    target = "None"
-    port = 3004
+    main_section = config.get("main", {})
 
-    rewrite = True
-    if config.has_section("main"):
-        rewrite = False
-        if config.has_option("main", "printer"):
-            target = config.get("main", "printer")
-        else:
-            rewrite = True
-        if config.has_option("main", "port"):
-            raw = config.get("main", "port")
-            rewrite = True
-            if raw.isdigit():
-                port = int(raw)
-                rewrite = False
-        else:
-            rewrite = True
+    target = main_section.get("printer", None)
+    port = int(main_section.get("port", 3004))
 
-    hypercorn: dict[str, str] = {}
-    if config.has_section("hypercorn"):
-        for option in config.options("hypercorn"):
-            hypercorn[option] = config.get("hypercorn", option)
-
-    if rewrite:
-        config.clear()
-        config.read_dict(
-            {
-                "main": {
-                    "printer": target,
-                    "port": port,
-                },
-                "hypercorn": hypercorn,
-            },
-        )
-        with open(MAIN_CONFIG, "w", encoding="utf-8") as config_file:
-            config.write(config_file)
+    hypercorn: dict[str, object] = config.get("hypercorn", {})
 
     print(f"Default Printer: {target}\nPort: {port}\n")
 
