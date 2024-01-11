@@ -1,6 +1,6 @@
 """Scanner Web Server - Website to talk to SANE scanners.
 
-Copyright (C) 2022  CoolCat467
+Copyright (C) 2022-2023  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
 
-__title__ = "Sane Scanner Web Server"
+__title__ = "Sane Scanner Webserver"
 __author__ = "CoolCat467"
-__version__ = "2.2.3"
+__version__ = "3.0.0"
 __license__ = "GPLv3"
 
 
@@ -32,11 +32,10 @@ import statistics
 import sys
 import time
 import traceback
-from collections.abc import AsyncIterator, Awaitable, Callable
-from configparser import ConfigParser
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from os import makedirs, path
+from os import getenv, makedirs, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
@@ -54,19 +53,31 @@ from werkzeug.exceptions import HTTPException
 from sanescansrv import htmlgen, logger
 from sanescansrv.logger import log
 
+if sys.version_info < (3, 11):
+    import tomli as tomllib
+    from exceptiongroup import BaseExceptionGroup
+else:
+    import tomllib
+
 if TYPE_CHECKING:
     from werkzeug import Response as WerkzeugResponse
 
+HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
+XDG_DATA_HOME: Final = trio.Path(getenv("XDG_DATA_HOME", HOME / ".local" / "share"))
+XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
+
+FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
+CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
+DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
+MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
+
 # For some reason error class is not exposed nicely; Let's fix that
-SaneError = sane._sane.error
+SaneError: Final = sane._sane.error
 logger.set_title(__title__)
 
 SANE_INITIALIZED = False
 
 Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import BaseExceptionGroup
 
 
 def stop_sane() -> None:
@@ -83,6 +94,16 @@ def restart_sane() -> None:
     stop_sane()
     sane.init()
     SANE_INITIALIZED = True
+
+
+def combine_end(data: Iterable[str], final: str = "and") -> str:
+    """Return comma separated string of list of strings with last item phrased properly."""
+    data = list(data)
+    if len(data) >= 2:
+        data[-1] = f"{final} {data[-1]}"
+    if len(data) > 2:
+        return ", ".join(data)
+    return " ".join(data)
 
 
 async def send_error(
@@ -237,19 +258,19 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         return []
 
     for result in device.get_options():
-        ##        print(f'\n{result = }')
+        # print(f'\n{result = }')
         if not result[1] or "button" in result[1]:
             continue
         option = sane.Option(result, device)
         if not option.is_settable():
-            ##            print("> Not settable")
+            # print("> Not settable")
             continue
 
         constraints: list[str] = []
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
-        ##        print(f'{type_ = }')
+        # print(f'{type_ = }')
         if type_ not in {"INT", "STRING", "BOOL"}:
-            ##            print(f'type {type_!r} is invalid')
+            # print(f'type {type_!r} is invalid')
             continue
         if type_ == "BOOL":
             constraints = ["1", "0"]
@@ -272,7 +293,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         default = "None"
         with contextlib.suppress(AttributeError, ValueError):
             default = str(getattr(device, option.py_name))
-        ##        print(f'{default = }')
+        # print(f'{default = }')
 
         unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
 
@@ -284,7 +305,6 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 default=default,
                 unit=unit,
                 desc=option.desc,
-                ##                set=default,
             ),
         )
 
@@ -598,32 +618,75 @@ async def serve_async(app: QuartTrio, config_obj: Config) -> None:
 
 
 def serve_scanner(
-    root_dir: str,
     device_name: str,
-    port: int,
     *,
+    secure_bind_port: int | None = None,
+    insecure_bind_port: int | None = None,
     ip_addr: str | None = None,
+    hypercorn: dict[str, object] | None = None,
 ) -> None:
     """Asynchronous Entry Point."""
+    if secure_bind_port is None and insecure_bind_port is None:
+        raise ValueError("Port must be specified with `port` and or `ssl_port`!")
+
     if not ip_addr:
         ip_addr = find_ip()
 
-    try:
-        # Add more information about the address
-        location = f"{ip_addr}:{port}"
+    if not hypercorn:
+        hypercorn = {}
 
-        config = {
-            "bind": [location],
-            "worker_class": "trio",
-            "errorlog": path.join(
-                root_dir,
-                "logs",
-                time.strftime("log_%Y_%m_%d.log"),
-            ),
+    logs_path = DATA_PATH / "logs"
+    if not path.exists(logs_path):
+        makedirs(logs_path)
+
+    print(f"Logs Path: {str(logs_path)!r}\n")
+
+    try:
+        # Hypercorn config setup
+        config: dict[str, object] = {
+            "accesslog": "-",
+            "errorlog": logs_path / time.strftime("log_%Y_%m_%d.log"),
         }
-        app.config["SERVER_NAME"] = location
+        # Load things from user controlled toml file for hypercorn
+        config.update(hypercorn)
+        # Override a few particularly important details if set by user
+        config.update(
+            {
+                "worker_class": "trio",
+            },
+        )
+        # Make sure address is in bind
+
+        if insecure_bind_port is not None:
+            raw_bound = config.get("insecure_bind", [])
+            if not isinstance(raw_bound, Iterable):
+                raise ValueError("main.bind must be an iterable object (set in config file)!")
+            bound = set(raw_bound)
+            bound |= {f"{ip_addr}:{insecure_bind_port}"}
+            config["insecure_bind"] = bound
+
+            # If no secure port, use bind instead
+            if secure_bind_port is None:
+                config["bind"] = config["insecure_bind"]
+                config["insecure_bind"] = []
+
+            insecure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            print(f"Serving on {insecure_locations} insecurely")
+
+        if secure_bind_port is not None:
+            raw_bound = config.get("bind", [])
+            if not isinstance(raw_bound, Iterable):
+                raise ValueError("main.bind must be an iterable object (set in config file)!")
+            bound = set(raw_bound)
+            bound |= {f"{ip_addr}:{secure_bind_port}"}
+            config["bind"] = bound
+
+            secure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            print(f"Serving on {secure_locations} securely")
+
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
+        # We want pretty html, no jank
         app.jinja_options = {
             "trim_blocks": True,
             "lstrip_blocks": True,
@@ -637,7 +700,7 @@ def serve_scanner(
         APP_STORAGE["default_device"] = device_name
         APP_STORAGE["device_settings"] = {}
 
-        print(f"Serving on http://{location}\n(CTRL + C to quit)")
+        print("(CTRL + C to quit)")
 
         trio.run(serve_async, app, config_obj)
     except BaseExceptionGroup as exc:
@@ -647,75 +710,71 @@ def serve_scanner(
                 log("Shutting down from keyboard interrupt")
                 caught = True
                 break
-            if isinstance(ex, OSError):
-                log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
-                caught = True
-                sys.exit(1)
         if not caught:
             raise
 
 
 def run() -> None:
     """Run scanner server."""
-    root_dir = path.abspath(path.expanduser(path.join("~", ".sanescansrv")))
-    if not path.exists(root_dir):
-        makedirs(root_dir, exist_ok=True)
-
-    config = ConfigParser()
-    conf_file = path.join(root_dir, "config.ini")
-    config.read(conf_file)
-
-    target = "None"
-    port = 3004
-    hostname = "None"
-
-    rewrite = True
-    if config.has_section("main"):
-        rewrite = False
-        if config.has_option("main", "printer"):
-            target = config.get("main", "printer")
-        else:
-            rewrite = True
-        if config.has_option("main", "port"):
-            raw = config.get("main", "port")
-            rewrite = True
-            if raw.isdigit():
-                port = int(raw)
-                rewrite = False
-        else:
-            rewrite = True
-        if config.has_option("main", "hostname"):
-            hostname = config.get("main", "hostname")
-        else:
-            rewrite = True
-
-    if rewrite:
-        config.clear()
-        config.read_dict(
-            {
-                "main": {
-                    "printer": target,
-                    "port": port,
-                    "hostname": hostname,
-                },
-            },
-        )
-        with open(conf_file, "w", encoding="utf-8") as config_file:
-            config.write(config_file)
-
-    print(f"Default Printer: {target}\nPort: {port}\nHostname: {hostname}")
     pil_version = getattr(Image, "__version__", None)
     assert pil_version is not None, "PIL should have a version!"
     print(f"PIL Image Version: {pil_version}\n")
 
+    if not path.exists(CONFIG_PATH):
+        makedirs(CONFIG_PATH)
+    if not path.exists(MAIN_CONFIG):
+        with open(MAIN_CONFIG, "w", encoding="utf-8") as fp:
+            fp.write(
+                """[main]
+# Name of scanner to use on default as displayed on the webpage
+# or by model as listed with `scanimage --formatted-device-list "%m%n"`
+printer = "Canon PIXMA MG3600 Series"
+
+# Port server should run on.
+# You might want to consider changing this to 80
+port = 3004
+
+# Port for SSL secured server to run on
+#ssl_port = 443
+
+# Helpful stack exchange website question on how to allow non root processes
+# to bind to lower numbered ports
+# https://superuser.com/questions/710253/allow-non-root-process-to-bind-to-port-80-and-443
+# Answer I used: https://superuser.com/a/1482188/1879931
+
+[hypercorn]
+# See https://hypercorn.readthedocs.io/en/latest/how_to_guides/configuring.html#configuration-options
+use_reloader = false
+# SSL configuration details
+#certfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/fullchain.pem"
+#keyfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/privkey.pem"
+""",
+            )
+
+    print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
+
+    with open(MAIN_CONFIG, "rb") as fp:
+        config = tomllib.load(fp)
+
+    main_section = config.get("main", {})
+
+    target = main_section.get("printer", None)
+    insecure_bind_port = main_section.get("port", None)
+    secure_bind_port = main_section.get("ssl_port", None)
+
+    hypercorn: dict[str, object] = config.get("hypercorn", {})
+
+    print(f"Default Printer: {target}\n")
+
     if target == "None":
-        print("No default device in config file.")
+        print("No default device in config file.\n")
 
-    ip_address = None
-    if hostname != "None":
-        ip_address = hostname
-
-    serve_scanner(root_dir, target, port, ip_addr=ip_address)
+    serve_scanner(
+        target,
+        secure_bind_port=secure_bind_port,
+        insecure_bind_port=insecure_bind_port,
+        hypercorn=hypercorn,
+    )
 
 
 def sane_run() -> None:
