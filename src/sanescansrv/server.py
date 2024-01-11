@@ -657,29 +657,32 @@ def serve_scanner(
         )
         # Make sure address is in bind
 
-        if secure_bind_port is not None:
-            raw_bound = config.get("bind", [])
-            if not isinstance(raw_bound, Iterable):
-                raise ValueError("main.bind must be an iterable object (set in config file)!")
-            bound = set(raw_bound)
-            bound |= {f"{ip_addr}:{secure_bind_port}"}
-            sorted_bound = sorted(bound)
-            config["bind"] = sorted_bound
-
-            secure_locations = combine_end(f"http://{addr}" for addr in sorted_bound)
-            print(f"Serving on {secure_locations} securely")
-
         if insecure_bind_port is not None:
             raw_bound = config.get("insecure_bind", [])
             if not isinstance(raw_bound, Iterable):
                 raise ValueError("main.bind must be an iterable object (set in config file)!")
             bound = set(raw_bound)
             bound |= {f"{ip_addr}:{insecure_bind_port}"}
-            sorted_bound = sorted(bound)
-            config["insecure_bind"] = sorted_bound
+            config["insecure_bind"] = bound
 
-            insecure_locations = combine_end(f"http://{addr}" for addr in sorted_bound)
+            # If no secure port, use bind instead
+            if secure_bind_port is None:
+                config["bind"] = config["insecure_bind"]
+                config["insecure_bind"] = []
+
+            insecure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
             print(f"Serving on {insecure_locations} insecurely")
+
+        if secure_bind_port is not None:
+            raw_bound = config.get("bind", [])
+            if not isinstance(raw_bound, Iterable):
+                raise ValueError("main.bind must be an iterable object (set in config file)!")
+            bound = set(raw_bound)
+            bound |= {f"{ip_addr}:{secure_bind_port}"}
+            config["bind"] = bound
+
+            secure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            print(f"Serving on {secure_locations} securely")
 
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
@@ -692,6 +695,7 @@ def serve_scanner(
         app.add_url_rule("/<path:filename>", "static", app.send_static_file)
 
         config_obj = Config.from_mapping(config)
+        print(f"{config_obj = }")
 
         APP_STORAGE["scanners"] = {}
         APP_STORAGE["default_device"] = device_name
