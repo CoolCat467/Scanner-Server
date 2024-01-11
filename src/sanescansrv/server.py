@@ -1,6 +1,6 @@
 """Scanner Web Server - Website to talk to SANE scanners.
 
-Copyright (C) 2022  CoolCat467
+Copyright (C) 2022-2023  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
 FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
 CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
 DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
-MAIN_CONFIG: Final = CONFIG_PATH / f"{FILE_TITLE}_config.toml"
+MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -695,7 +695,6 @@ def serve_scanner(
         app.add_url_rule("/<path:filename>", "static", app.send_static_file)
 
         config_obj = Config.from_mapping(config)
-        print(f"{config_obj = }")
 
         APP_STORAGE["scanners"] = {}
         APP_STORAGE["default_device"] = device_name
@@ -747,8 +746,8 @@ port = 3004
 # See https://hypercorn.readthedocs.io/en/latest/how_to_guides/configuring.html#configuration-options
 use_reloader = false
 # SSL configuration details
-#certfile = "cert.pem"
-#keyfile = "key.pem"
+#certfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/fullchain.pem"
+#keyfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/privkey.pem"
 """,
             )
 
