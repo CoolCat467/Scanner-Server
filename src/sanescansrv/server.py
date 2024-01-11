@@ -619,12 +619,16 @@ async def serve_async(app: QuartTrio, config_obj: Config) -> None:
 
 def serve_scanner(
     device_name: str,
-    port: int,
     *,
+    secure_bind_port: int | None = None,
+    insecure_bind_port: int | None = None,
     ip_addr: str | None = None,
     hypercorn: dict[str, object] | None = None,
 ) -> None:
     """Asynchronous Entry Point."""
+    if secure_bind_port is None and insecure_bind_port is None:
+        raise ValueError("Port must be specified with `port` and or `ssl_port`!")
+
     if not ip_addr:
         ip_addr = find_ip()
 
@@ -634,12 +638,10 @@ def serve_scanner(
     logs_path = DATA_PATH / "logs"
     if not path.exists(logs_path):
         makedirs(logs_path)
+
     print(f"Logs Path: {str(logs_path)!r}\n")
 
     try:
-        # Add more information about the address
-        location = f"{ip_addr}:{port}"
-
         # Hypercorn config setup
         config: dict[str, object] = {
             "accesslog": "-",
@@ -653,16 +655,35 @@ def serve_scanner(
                 "worker_class": "trio",
             },
         )
-        # Make sure location is in bind
-        raw_bound = config.get("bind", [])
-        if not isinstance(raw_bound, Iterable):
-            raise ValueError("main.bind must be an iterable object (set in config file)!")
-        bound = set()
-        bound |= {location}
-        config["bind"] = list(bound)
+        # Make sure address is in bind
+
+        if secure_bind_port is not None:
+            raw_bound = config.get("bind", [])
+            if not isinstance(raw_bound, Iterable):
+                raise ValueError("main.bind must be an iterable object (set in config file)!")
+            bound = set(raw_bound)
+            bound |= {f"{ip_addr}:{secure_bind_port}"}
+            sorted_bound = sorted(bound)
+            config["bind"] = sorted_bound
+
+            secure_locations = combine_end(f"http://{addr}" for addr in sorted_bound)
+            print(f"Serving on {secure_locations} securely")
+
+        if insecure_bind_port is not None:
+            raw_bound = config.get("insecure_bind", [])
+            if not isinstance(raw_bound, Iterable):
+                raise ValueError("main.bind must be an iterable object (set in config file)!")
+            bound = set(raw_bound)
+            bound |= {f"{ip_addr}:{insecure_bind_port}"}
+            sorted_bound = sorted(bound)
+            config["insecure_bind"] = sorted_bound
+
+            insecure_locations = combine_end(f"http://{addr}" for addr in sorted_bound)
+            print(f"Serving on {insecure_locations} insecurely")
 
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
 
+        # We want pretty html, no jank
         app.jinja_options = {
             "trim_blocks": True,
             "lstrip_blocks": True,
@@ -676,7 +697,7 @@ def serve_scanner(
         APP_STORAGE["default_device"] = device_name
         APP_STORAGE["device_settings"] = {}
 
-        print(f"Serving on http://{location}\n(CTRL + C to quit)")
+        print("(CTRL + C to quit)")
 
         trio.run(serve_async, app, config_obj)
     except BaseExceptionGroup as exc:
@@ -686,11 +707,6 @@ def serve_scanner(
                 log("Shutting down from keyboard interrupt")
                 caught = True
                 break
-            if isinstance(ex, OSError):
-                traceback.print_exc()
-                log(f"Cannot bind to IP address '{ip_addr}' port {port}", 2)
-                caught = True
-                sys.exit(1)
         if not caught:
             raise
 
@@ -707,14 +723,29 @@ def run() -> None:
         with open(MAIN_CONFIG, "w", encoding="utf-8") as fp:
             fp.write(
                 """[main]
-# Name of printer to use on default
-printer = "None"
-# Port server should run on
+# Name of scanner to use on default as displayed on the webpage
+# or by model as listed with `scanimage --formatted-device-list "%m%n"`
+printer = "Canon PIXMA MG3600 Series"
+
+# Port server should run on.
+# You might want to consider changing this to 80
 port = 3004
+
+# Port for SSL secured server to run on
+#ssl_port = 443
+
+# Helpful stack exchange website question on how to allow non root processes
+# to bind to lower numbered ports
+# https://superuser.com/questions/710253/allow-non-root-process-to-bind-to-port-80-and-443
+# Answer I used: https://superuser.com/a/1482188/1879931
 
 [hypercorn]
 # See https://hypercorn.readthedocs.io/en/latest/how_to_guides/configuring.html#configuration-options
-use_reloader = false""",
+use_reloader = false
+# SSL configuration details
+#certfile = "cert.pem"
+#keyfile = "key.pem"
+""",
             )
 
     print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
@@ -725,16 +756,22 @@ use_reloader = false""",
     main_section = config.get("main", {})
 
     target = main_section.get("printer", None)
-    port = int(main_section.get("port", 3004))
+    insecure_bind_port = main_section.get("port", None)
+    secure_bind_port = main_section.get("ssl_port", None)
 
     hypercorn: dict[str, object] = config.get("hypercorn", {})
 
-    print(f"Default Printer: {target}\nPort: {port}\n")
+    print(f"Default Printer: {target}\n")
 
     if target == "None":
         print("No default device in config file.\n")
 
-    serve_scanner(target, port, hypercorn=hypercorn)
+    serve_scanner(
+        target,
+        secure_bind_port=secure_bind_port,
+        insecure_bind_port=insecure_bind_port,
+        hypercorn=hypercorn,
+    )
 
 
 def sane_run() -> None:
