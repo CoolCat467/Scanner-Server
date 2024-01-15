@@ -233,7 +233,7 @@ class DeviceSetting:
     default: str
     unit: str
     desc: str
-    set: str | None = None  # noqa: A003  # Attribute shadows builtin
+    set: str | None = None  # Attribute shadows builtin
 
     def as_argument(self) -> str:
         """Return setting as argument."""
