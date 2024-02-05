@@ -193,8 +193,7 @@ def radio_select_dict(
 ) -> str:
     """Create radio select from dictionary."""
     lines = []
-    count = 0
-    for display, value in options.items():
+    for count, (display, value) in enumerate(options.items()):
         cid = f"{submit_name}_{count}"
         args = {
             "type": "radio",
@@ -207,7 +206,6 @@ def radio_select_dict(
         lines.append(tag("input", **args))
         lines.append(wrap_tag("label", display, False, **{"for": cid}))
         lines.append("<br>")
-        count += 1
     return "\n".join(lines)
 
 
@@ -347,9 +345,8 @@ def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
     "" key means else block.
     """
     contents = []
-    count = 0
     has_else = False
-    for condition, content in conditions.items():
+    for count, (condition, content) in enumerate(conditions.items()):
         statement = "if" if count == 0 else "elif"
         cond = ""
         if condition:
@@ -367,7 +364,6 @@ def jinja_if_block(conditions: dict[str, str], block: bool = True) -> str:
             statement = "else"
         contents.append(jinja_statement(f"{statement}{cond}"))
         contents.append(content)
-        count += 1
     contents.append(jinja_statement("endif"))
     join = "\n" if block else ""
     return join.join(contents)
