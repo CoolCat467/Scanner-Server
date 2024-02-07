@@ -1,6 +1,6 @@
 """Scanner Web Server - Website to talk to SANE scanners.
 
-Copyright (C) 2022-2023  CoolCat467
+Copyright (C) 2022-2024  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -442,7 +442,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
 
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
-    delay = 3
+    delay = 5
     estimated_wait: int = 9999
 
     if status == ScanStatus.IN_PROGRESS:
@@ -458,7 +458,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
         estimated_wait_ns = delta_total * average_wait_ns
         # nanoseconds -> seconds
         estimated_wait = math.ceil(estimated_wait_ns // 1e9)
-        delay = max(delay, min(5, estimated_wait))
+        delay = max(delay, min(10, estimated_wait))
 
     return await stream_template(
         "scan-status_get.html.jinja",
@@ -525,13 +525,44 @@ async def root_post() -> WerkzeugResponse | AsyncIterator[str]:
     return app.redirect("/scan-status")
 
 
+def update_scanners() -> None:
+    """Update scanners list."""
+    APP_STORAGE["scanners"] = get_devices()
+    for _model, device in APP_STORAGE["scanners"].items():
+        if device not in APP_STORAGE["device_settings"]:
+            APP_STORAGE["device_settings"][device] = get_device_settings(device)
+
+
+async def update_scanners_async() -> bool:
+    """Update scanners list asynchronously. Return if successful."""
+    if SCAN_LOCK.locked():
+        return False
+    async with SCAN_LOCK:
+        await trio.to_thread.run_sync(update_scanners)
+    return True
+
+
+async def refresh_devices(delay_sec: int = 60 * 60) -> None:
+    """Refresh devices list every delay_sec seconds."""
+    while True:
+        try:
+            await update_scanners_async()
+            await trio.sleep(delay_sec)
+        except trio.Cancelled:
+            return
+
+
 @app.get("/update_scanners")
 @pretty_exception
 async def update_scanners_get() -> WerkzeugResponse:
     """Update scanners get handling."""
-    APP_STORAGE["scanners"] = get_devices()
-    for _model, device in APP_STORAGE["scanners"].items():
-        APP_STORAGE["device_settings"][device] = get_device_settings(device)
+    success = await update_scanners_async()
+    if not success:
+        return await send_error(
+            "Scan Currently Running",
+            "There is a scan request currently running, updating the device list at this time might not be smart.",
+            return_link="/update_scanners",
+        )
     return app.redirect("scanners")
 
 
@@ -610,10 +641,11 @@ async def settings_post() -> WerkzeugResponse:
     return app.redirect(request.url)
 
 
-async def serve_async(app: QuartTrio, config_obj: Config) -> None:
+async def serve_async(app: QuartTrio, config_obj: Config, auto_refresh_time: int = 60 * 60) -> None:
     """Serve app within a nursery."""
     async with trio.open_nursery(strict_exception_groups=True) as nursery:
         APP_STORAGE["nursery"] = nursery
+        nursery.start_soon(refresh_devices, auto_refresh_time)
         await nursery.start(serve, app, config_obj)
 
 
@@ -624,6 +656,7 @@ def serve_scanner(
     insecure_bind_port: int | None = None,
     ip_addr: str | None = None,
     hypercorn: dict[str, object] | None = None,
+    auto_refresh_sec: int = 60 * 60,
 ) -> None:
     """Asynchronous Entry Point."""
     if secure_bind_port is None and insecure_bind_port is None:
@@ -702,7 +735,7 @@ def serve_scanner(
 
         print("(CTRL + C to quit)")
 
-        trio.run(serve_async, app, config_obj)
+        trio.run(serve_async, app, config_obj, auto_refresh_sec)
     except BaseExceptionGroup as exc:
         caught = False
         for ex in exc.exceptions:
@@ -734,6 +767,10 @@ printer = "Canon PIXMA MG3600 Series"
 # You might want to consider changing this to 80
 port = 3004
 
+# Duration to wait before automatically refreshing scanner list
+# Supports fractional hours, ex 1.5 hours -> refresh every 90 minutes
+auto_refresh_hours = 1.0
+
 # Port for SSL secured server to run on
 #ssl_port = 443
 
@@ -761,6 +798,7 @@ use_reloader = false
     target = main_section.get("printer", None)
     insecure_bind_port = main_section.get("port", None)
     secure_bind_port = main_section.get("ssl_port", None)
+    auto_refresh_sec = float(main_section.get("auto_refresh_hours", 1)) * 60 * 60
 
     hypercorn: dict[str, object] = config.get("hypercorn", {})
 
@@ -774,6 +812,7 @@ use_reloader = false
         secure_bind_port=secure_bind_port,
         insecure_bind_port=insecure_bind_port,
         hypercorn=hypercorn,
+        auto_refresh_sec=auto_refresh_sec,
     )
 
 
