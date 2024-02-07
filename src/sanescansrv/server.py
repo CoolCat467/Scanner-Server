@@ -552,9 +552,9 @@ async def refresh_devices(delay_sec: int = 60 * 60) -> None:
             return
 
 
-@app.get("/update_scanners")
+@app.get("/update_scanners")  # type: ignore[type-var]
 @pretty_exception
-async def update_scanners_get() -> WerkzeugResponse:
+async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str]:
     """Update scanners get handling."""
     success = await update_scanners_async()
     if not success:
@@ -798,7 +798,7 @@ use_reloader = false
     target = main_section.get("printer", None)
     insecure_bind_port = main_section.get("port", None)
     secure_bind_port = main_section.get("ssl_port", None)
-    auto_refresh_sec = float(main_section.get("auto_refresh_hours", 1)) * 60 * 60
+    auto_refresh_sec = math.ceil(float(main_section.get("auto_refresh_hours", 1)) * 60 * 60)
 
     hypercorn: dict[str, object] = config.get("hypercorn", {})
 
