@@ -565,16 +565,6 @@ async def update_scanners_async() -> bool:
     return True
 
 
-async def refresh_devices(delay_sec: int = 60 * 60) -> None:
-    """Refresh devices list every delay_sec seconds."""
-    while True:
-        try:
-            await update_scanners_async()
-            await trio.sleep(delay_sec)
-        except trio.Cancelled:
-            return
-
-
 @app.get("/update_scanners")  # type: ignore[type-var]
 @pretty_exception
 async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str]:
@@ -697,12 +687,12 @@ async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     return app.redirect("/")
 
 
-async def serve_async(app: QuartTrio, config_obj: Config, auto_refresh_time: int = 60 * 60) -> None:
+async def serve_async(app: QuartTrio, config_obj: Config) -> None:
     """Serve app within a nursery."""
     async with trio.open_nursery(strict_exception_groups=True) as nursery:
         APP_STORAGE["nursery"] = nursery
-        nursery.start_soon(refresh_devices, auto_refresh_time)
         await nursery.start(serve, app, config_obj)
+        await update_scanners_async()
 
 
 def serve_scanner(
@@ -712,7 +702,6 @@ def serve_scanner(
     insecure_bind_port: int | None = None,
     ip_addr: str | None = None,
     hypercorn: dict[str, object] | None = None,
-    auto_refresh_sec: int = 60 * 60,
 ) -> None:
     """Asynchronous Entry Point."""
     if secure_bind_port is None and insecure_bind_port is None:
@@ -791,7 +780,7 @@ def serve_scanner(
 
         print("(CTRL + C to quit)")
 
-        trio.run(serve_async, app, config_obj, auto_refresh_sec)
+        trio.run(serve_async, app, config_obj)
     except BaseExceptionGroup as exc:
         caught = False
         for ex in exc.exceptions:
@@ -823,10 +812,6 @@ printer = "Canon PIXMA MG3600 Series"
 # You might want to consider changing this to 80
 port = 3004
 
-# Duration to wait before automatically refreshing scanner list
-# Supports fractional hours, ex 1.5 hours -> refresh every 90 minutes
-auto_refresh_hours = 1.0
-
 # Port for SSL secured server to run on
 #ssl_port = 443
 
@@ -854,7 +839,6 @@ use_reloader = false
     target = main_section.get("printer", None)
     insecure_bind_port = main_section.get("port", None)
     secure_bind_port = main_section.get("ssl_port", None)
-    auto_refresh_sec = math.ceil(float(main_section.get("auto_refresh_hours", 1)) * 60 * 60)
 
     hypercorn: dict[str, object] = config.get("hypercorn", {})
 
@@ -868,7 +852,6 @@ use_reloader = false
         secure_bind_port=secure_bind_port,
         insecure_bind_port=insecure_bind_port,
         hypercorn=hypercorn,
-        auto_refresh_sec=auto_refresh_sec,
     )
 
 
