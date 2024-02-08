@@ -186,6 +186,42 @@ def contain_in_box(inside: str, name: str | None = None) -> str:
     )
 
 
+def input_field(
+    field_id: str,
+    field_title: str | None,
+    *,
+    field_type: str = "text",
+    attrs: dict[str, TagArg] | None = None,
+) -> str:
+    """Generate HTML input field.
+
+    If any attribute from attrs conflicts with an attribute defined from
+    other parameters, a ValueError is raised
+    """
+    lines = []
+    args: dict[str, TagArg] = {
+        "type": field_type,
+        "id": field_id,
+        "name": field_id,
+    }
+    if args["type"] == "text":
+        # Browser defaults to text
+        del args["type"]
+    if attrs is not None:
+        for key, value in attrs.items():
+            property_ = _key_to_html_property(key)
+            if property_ not in args:
+                args[property_] = value
+            else:
+                raise ValueError(
+                    f"Attribute {key!r} conflicts with an internal attribute",
+                )
+    lines.append(tag("input", **args))
+    if field_title is not None:
+        lines.append(wrap_tag("label", field_title, False, for_=field_id))
+    return "\n".join(lines)
+
+
 def radio_select_dict(
     submit_name: str,
     options: dict[str, str],
@@ -218,42 +254,6 @@ def radio_select_box(
     """Create radio select value box from dictionary and optional names."""
     radios = radio_select_dict(submit_name, options, default)
     return contain_in_box("<br>\n" + radios, box_title)
-
-
-def input_field(
-    field_id: str,
-    field_title: str | None,
-    *,
-    field_type: str = "text",
-    attrs: dict[str, TagArg] | None = None,
-) -> str:
-    """Generate HTML input field.
-
-    If any attribute from attrs conflicts with an attribute defined from
-    other parameters, a ValueError is raised
-    """
-    lines = []
-    args: dict[str, TagArg] = {
-        "type": field_type,
-        "id": field_id,
-        "name": field_id,
-    }
-    if args["type"] == "text":
-        # Browser defaults to text
-        del args["type"]
-    if attrs is not None:
-        for key, value in attrs.items():
-            property_ = _key_to_html_property(key)
-            if property_ not in args:
-                args[property_] = value
-            else:
-                raise ValueError(
-                    f"Attribute {key!r} conflicts with an internal attribute",
-                )
-    if field_title is not None:
-        lines.append(wrap_tag("label", field_title, False, for_=field_id))
-    lines.append(tag("input", **args))
-    return "\n".join(lines)
 
 
 def bullet_list(values: list[str], **kwargs: TagArg) -> str:

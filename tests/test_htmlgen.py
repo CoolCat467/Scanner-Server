@@ -236,16 +236,16 @@ def test_radio_select_box() -> None:
 def test_input_field_no_kwarg() -> None:
     assert (
         htmlgen.input_field("<id>", "woot")
-        == """<label for="<id>">woot</label>
-<input id="<id>" name="<id>">"""
+        == """<input id="<id>" name="<id>">
+<label for="<id>">woot</label>"""
     )
 
 
 def test_input_field_with_type() -> None:
     assert (
         htmlgen.input_field("<id>", "woot", field_type="types woo")
-        == """<label for="<id>">woot</label>
-<input type="types woo" id="<id>" name="<id>">"""
+        == """<input type="types woo" id="<id>" name="<id>">
+<label for="<id>">woot</label>"""
     )
 
 
@@ -257,8 +257,8 @@ def test_input_field_attrs() -> None:
             field_type="types woo",
             attrs={"autoselect": ""},
         )
-        == """<label for="<id>">woot</label>
-<input type="types woo" id="<id>" name="<id>" autoselect="">"""
+        == """<input type="types woo" id="<id>" name="<id>" autoselect="">
+<label for="<id>">woot</label>"""
     )
 
 
