@@ -185,18 +185,18 @@ def test_contain_in_box_named() -> None:
     )
 
 
-def test_radio_select_dict() -> None:
+def test_select_dict() -> None:
     assert (
-        htmlgen.radio_select_dict("name_here", {"cat": "seven"})
+        htmlgen.select_dict("name_here", {"cat": "seven"})
         == """<input type="radio" id="name_here_0" name="name_here" value="seven">
 <label for="name_here_0">cat</label>
 <br>"""
     )
 
 
-def test_radio_select_dict_lots_default() -> None:
+def test_select_dict_lots_default() -> None:
     assert (
-        htmlgen.radio_select_dict(
+        htmlgen.select_dict(
             "name_here",
             {"cat": "0", "fish": "1", "four": "3"},
             default="0",
@@ -213,9 +213,31 @@ def test_radio_select_dict_lots_default() -> None:
     )
 
 
-def test_radio_select_box() -> None:
+def test_select_dict_checkbox() -> None:
     assert (
-        htmlgen.radio_select_box(
+        htmlgen.select_dict(
+            "breakfast_options",
+            {
+                "Syrup?": ("yes_syrup", "checkbox"),
+                "Eggs?": ("yes_eggs", "checkbox"),
+                "Bacon?": ("yes_bacon", "checkbox"),
+            },
+        )
+        == """<input type="checkbox" id="breakfast_options_0" name="breakfast_options" value="yes_syrup">
+<label for="breakfast_options_0">Syrup?</label>
+<br>
+<input type="checkbox" id="breakfast_options_1" name="breakfast_options" value="yes_eggs">
+<label for="breakfast_options_1">Eggs?</label>
+<br>
+<input type="checkbox" id="breakfast_options_2" name="breakfast_options" value="yes_bacon">
+<label for="breakfast_options_2">Bacon?</label>
+<br>"""
+    )
+
+
+def test_select_box() -> None:
+    assert (
+        htmlgen.select_box(
             "name_here",
             {"cat": "seven"},
             box_title="click to add title",

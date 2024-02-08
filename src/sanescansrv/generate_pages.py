@@ -261,7 +261,7 @@ def generate_root_get() -> str:
             "scanners",
             "default",
             # htmlgen.jinja_statement('default'),
-            htmlgen.radio_select_dict(
+            htmlgen.select_dict(
                 "scanner",
                 {f"None - {link}": "none"},
                 "none",
@@ -270,7 +270,7 @@ def generate_root_get() -> str:
         "Select a Scanner:",
     )
 
-    image_format = htmlgen.radio_select_box(
+    image_format = htmlgen.select_box(
         "img_format",
         {v.upper(): v for v in ("png", "jpeg", "pnm", "tiff")},
         "png",

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:  # pragma: nocover
-    from collections.abc import Generator, Iterable
+    from collections.abc import Generator, Iterable, Mapping
 
 
 def indent(level: int, text: str) -> str:
@@ -190,19 +190,24 @@ def input_field(
     field_id: str,
     field_title: str | None,
     *,
+    field_name: str | None = None,
     field_type: str = "text",
-    attrs: dict[str, TagArg] | None = None,
+    attrs: Mapping[str, TagArg] | None = None,
 ) -> str:
     """Generate HTML input field.
+
+    If `field_name` is left as `None`, it will default to `field_id`.
 
     If any attribute from attrs conflicts with an attribute defined from
     other parameters, a ValueError is raised
     """
+    if field_name is None:
+        field_name = field_id
     lines = []
     args: dict[str, TagArg] = {
         "type": field_type,
         "id": field_id,
-        "name": field_id,
+        "name": field_name,
     }
     if args["type"] == "text":
         # Browser defaults to text
@@ -222,37 +227,54 @@ def input_field(
     return "\n".join(lines)
 
 
-def radio_select_dict(
+def select_dict(
     submit_name: str,
-    options: dict[str, str],
+    options: Mapping[str, str | tuple[str, str]],
     default: str | None = None,
 ) -> str:
-    """Create radio select from dictionary."""
+    """Create radio select from dictionary.
+
+    Options is a mapping of display text to submit as
+    field values and or field types.
+    """
     lines = []
-    for count, (display, value) in enumerate(options.items()):
-        cid = f"{submit_name}_{count}"
-        args = {
-            "type": "radio",
-            "id": cid,
-            "name": submit_name,
+    for count, (display, value_data) in enumerate(options.items()):
+        if isinstance(value_data, str):
+            # If just field value, default to radio
+            field_type = "radio"
+            value = value_data
+        else:
+            # Otherwise user can define field type.
+            value, field_type = value_data
+        attributes = {
             "value": value,
         }
         if value == default:
-            args["checked"] = "checked"
-        lines.append(tag("input", **args))
-        lines.append(wrap_tag("label", display, False, **{"for": cid}))
+            attributes["checked"] = "checked"
+        lines.append(
+            input_field(
+                field_id=f"{submit_name}_{count}",
+                field_title=display,
+                field_name=submit_name,
+                field_type=field_type,
+                attrs=attributes,
+            ),
+        )
         lines.append("<br>")
     return "\n".join(lines)
 
 
-def radio_select_box(
+def select_box(
     submit_name: str,
-    options: dict[str, str],
+    options: Mapping[str, str | tuple[str, str]],
     default: str | None = None,
     box_title: str | None = None,
 ) -> str:
-    """Create radio select value box from dictionary and optional names."""
-    radios = radio_select_dict(submit_name, options, default)
+    """Create radio select value box from dictionary and optional names.
+
+    See `select_dict` for more information on arguments
+    """
+    radios = select_dict(submit_name, options, default)
     return contain_in_box("<br>\n" + radios, box_title)
 
 
