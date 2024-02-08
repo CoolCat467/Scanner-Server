@@ -229,7 +229,7 @@ def input_field(
 
 def select_dict(
     submit_name: str,
-    options: Mapping[str, str | tuple[str, str]],
+    options: Mapping[str, str | dict[str, str]],
     default: str | None = None,
 ) -> str:
     """Create radio select from dictionary.
@@ -242,14 +242,14 @@ def select_dict(
         if isinstance(value_data, str):
             # If just field value, default to radio
             field_type = "radio"
-            value = value_data
+            attributes = {
+                "value": value_data,
+            }
         else:
             # Otherwise user can define field type.
-            value, field_type = value_data
-        attributes = {
-            "value": value,
-        }
-        if value == default:
+            attributes = dict(value_data)
+            field_type = attributes.pop("type", "radio")
+        if "value" in attributes and attributes["value"] == default:
             attributes["checked"] = "checked"
         lines.append(
             input_field(
@@ -266,7 +266,7 @@ def select_dict(
 
 def select_box(
     submit_name: str,
-    options: Mapping[str, str | tuple[str, str]],
+    options: Mapping[str, str | dict[str, str]],
     default: str | None = None,
     box_title: str | None = None,
 ) -> str:

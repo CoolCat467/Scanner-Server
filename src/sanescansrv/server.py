@@ -223,6 +223,14 @@ def get_devices() -> dict[str, str]:
     return devices
 
 
+class OptionType(IntEnum):
+    """Option Types for Device Settings."""
+
+    RADIO = auto()
+    CHECK = auto()
+    RANGE_DROPDOWN = auto()
+
+
 @dataclass
 class DeviceSetting:
     """Setting for device."""
@@ -234,6 +242,7 @@ class DeviceSetting:
     unit: str
     desc: str
     set: str | None = None
+    option_type: OptionType = OptionType.RADIO
 
     def as_argument(self) -> str:
         """Return setting as argument."""
@@ -258,8 +267,8 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         return []
 
     for result in device.get_options():
-        # print(f'\n{result = }')
-        if not result[1] or "button" in result[1]:
+        # print(f"\n{result = }")
+        if not result[1]:
             continue
         option = sane.Option(result, device)
         if not option.is_settable():
@@ -269,26 +278,37 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         constraints: list[str] = []
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
         # print(f'{type_ = }')
+
+        option_type = OptionType.RADIO
+
         if type_ not in {"INT", "STRING", "BOOL"}:
-            # print(f'type {type_!r} is invalid')
+            # print(f"type {type_!r} is invalid")
             continue
         if type_ == "BOOL":
             constraints = ["1", "0"]
         elif isinstance(option.constraint, tuple):
             if isinstance(option.constraint[0], float):
+                # print("> Float constraint")
                 continue
             if option.constraint[2] == 0:
+                # print("> Zero constraint")
                 continue
             range_ = range(*option.constraint)
-            if len(range_) > 5:
+            if len(range_) <= 5:
+                constraints = [str(i) for i in range_]
+            else:
+                constraints = [str(x) for x in option.constraint]
+                option_type = OptionType.RANGE_DROPDOWN
+                # TODO: Make range constraint work
                 continue
-            constraints = [str(i) for i in range_]
         elif option.constraint is None:
+            # print("> None constraint")
             continue
         else:
             constraints = [str(x) for x in option.constraint]
-        if len(constraints) < 2:
-            continue
+        # if len(constraints) < 2:
+        #     print("> Less than two constraints")
+        #     continue
 
         default = "None"
         with contextlib.suppress(AttributeError, ValueError):
@@ -305,6 +325,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 default=default,
                 unit=unit,
                 desc=option.desc,
+                option_type=option_type,
             ),
         )
 
@@ -414,6 +435,8 @@ async def preform_scan_async(
             progress,
             thread_name="preform_scan_async",
         )
+        ##except SaneError as ex:
+        ##    if "Invalid argument" in ex.args:
         APP_STORAGE["scan_status"] = (
             ScanStatus.DONE,
             filename,
@@ -582,11 +605,30 @@ async def scanners_get() -> AsyncIterator[str]:
 
 def get_setting_radio(setting: DeviceSetting) -> str:
     """Return setting radio section."""
-    options = {x.title(): x for x in setting.options}
-    if set(options.keys()) == {"1", "0"}:
-        options = {"True": "1", "False": "0"}
     default = setting.default if setting.set is None else setting.set
-    return htmlgen.radio_select_box(
+    if setting.option_type == OptionType.RADIO:
+        options = {x.title(): x for x in setting.options}
+        if set(options.keys()) == {"1", "0"}:
+            options = {"True": "1", "False": "0"}
+        if len(options) == 1 or "button" in setting.name:
+            # TODO: Table one?
+            options = {
+                title: {
+                    "value": value,
+                    "disabled": "disabled",
+                }
+                for title, value in options.items()
+            }
+    elif setting.option_type == OptionType.RANGE_DROPDOWN:
+        range_control = [int(x) for x in setting.options]
+        while len(range_control) != 3:
+            range_control.append(1)
+        min_, max_, step = range_control
+        options = {"Number": {"type": "number", "min": min_, "max": max_, "step": step, "value": default}}
+    else:
+        raise NotImplementedError(f"{setting.option_type = }")
+
+    return htmlgen.select_box(
         submit_name=setting.name,
         options=options,
         default=default,
@@ -639,6 +681,20 @@ async def settings_post() -> WerkzeugResponse:
 
     # Return to page for that scanner
     return app.redirect(request.url)
+
+
+@app.post("/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery")
+async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
+    """Handle stable_ws_discovery_endpoint POST."""
+    args = request.args
+
+    print(f"StableWSDiscoveryEndpoint URL {args = }")
+
+    multi_dict = await request.form
+    data = multi_dict.to_dict()
+
+    print(f"StableWSDiscoveryEndpoint POST {data = }")
+    return app.redirect("/")
 
 
 async def serve_async(app: QuartTrio, config_obj: Config, auto_refresh_time: int = 60 * 60) -> None:

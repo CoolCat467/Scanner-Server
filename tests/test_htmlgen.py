@@ -218,9 +218,9 @@ def test_select_dict_checkbox() -> None:
         htmlgen.select_dict(
             "breakfast_options",
             {
-                "Syrup?": ("yes_syrup", "checkbox"),
-                "Eggs?": ("yes_eggs", "checkbox"),
-                "Bacon?": ("yes_bacon", "checkbox"),
+                "Syrup?": {"value": "yes_syrup", "type": "checkbox"},
+                "Eggs?": {"value": "yes_eggs", "type": "checkbox"},
+                "Bacon?": {"value": "yes_bacon", "type": "checkbox"},
             },
         )
         == """<input type="checkbox" id="breakfast_options_0" name="breakfast_options" value="yes_syrup">
