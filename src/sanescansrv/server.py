@@ -32,7 +32,7 @@ import statistics
 import sys
 import time
 import traceback
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import getenv, makedirs, path
@@ -606,23 +606,23 @@ async def scanners_get() -> AsyncIterator[str]:
 def get_setting_radio(setting: DeviceSetting) -> str:
     """Return setting radio section."""
     default = setting.default if setting.set is None else setting.set
+    options: Mapping[str, str | dict[str, str]] = {}
     if setting.option_type == OptionType.RADIO:
         options = {x.title(): x for x in setting.options}
         if set(options.keys()) == {"1", "0"}:
             options = {"True": "1", "False": "0"}
         if len(options) == 1 or "button" in setting.name:
             # TODO: Table one?
-            options = {
-                title: {
+            for title, value in tuple(options.items()):
+                assert isinstance(value, str)
+                options[title] = {
                     "value": value,
                     "disabled": "disabled",
                 }
-                for title, value in options.items()
-            }
     elif setting.option_type == OptionType.RANGE_DROPDOWN:
-        range_control = [int(x) for x in setting.options]
+        range_control = list(setting.options)
         while len(range_control) != 3:
-            range_control.append(1)
+            range_control.append("1")
         min_, max_, step = range_control
         options = {"Number": {"type": "number", "min": min_, "max": max_, "step": step, "value": default}}
     else:

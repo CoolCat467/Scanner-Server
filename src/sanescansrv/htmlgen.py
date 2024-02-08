@@ -229,7 +229,7 @@ def input_field(
 
 def select_dict(
     submit_name: str,
-    options: Mapping[str, str | dict[str, str]],
+    options: Mapping[str, str | Mapping[str, TagArg]],
     default: str | None = None,
 ) -> str:
     """Create radio select from dictionary.
@@ -247,7 +247,7 @@ def select_dict(
             }
         else:
             # Otherwise user can define field type.
-            attributes = dict(value_data)
+            attributes = dict(value_data)  # type: ignore[arg-type]
             field_type = attributes.pop("type", "radio")
         if "value" in attributes and attributes["value"] == default:
             attributes["checked"] = "checked"
@@ -266,7 +266,7 @@ def select_dict(
 
 def select_box(
     submit_name: str,
-    options: Mapping[str, str | dict[str, str]],
+    options: Mapping[str, str | Mapping[str, TagArg]],
     default: str | None = None,
     box_title: str | None = None,
 ) -> str:
