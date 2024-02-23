@@ -32,9 +32,12 @@ import statistics
 import sys
 import time
 import traceback
+import uuid
+import xml.etree.ElementTree as ElementTree
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
+from io import StringIO
 from os import getenv, makedirs, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
@@ -822,20 +825,98 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     return app.redirect(request.url)
 
 
+def xml_to_dict(xml_str: str) -> dict[str, object]:
+    """Return dict from xml data."""
+    # https://www.geeksforgeeks.org/python-xml-to-json/
+
+    with StringIO(xml_str) as fake_xml_file:
+        tree = ElementTree.parse(fake_xml_file)
+
+    root = tree.getroot()
+    data = {}
+    for child in root:
+        data.setdefault(child.tag, [])
+        dic = {}
+        for child2 in child:
+            if child2.tag not in dic:
+                dic[child2.tag] = child2.text
+        data[child.tag].append(dic)
+    return data
+
+
 @app.post("/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery")
 async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     """Handle stable_ws_discovery_endpoint POST."""
+    # https://specs.xmlsoap.org/ws/2005/04/discovery/ws-discovery.pdf
+
     data = await request.data
     print(f"StableWSDiscoveryEndpoint {data = }")
 
-    args = request.args
-    print(f"StableWSDiscoveryEndpoint URL {args = }")
+    ##    data = b'<?xml version="1.0"?><soap:Envelope xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsd="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsdp="http://schemas.xmlsoap.org/ws/2006/02/devprof"><soap:Header><wsa:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe</wsa:Action><wsa:MessageID>urn:uuid:5f028002-a42e-8dd5-b754-aa91e55db7d5</wsa:MessageID><wsa:To>urn:schemas-xmlsoap-org:ws:2005:04:discovery</wsa:To></soap:Header><soap:Body><wsd:Probe><wsd:Types>wsdp:Device</wsd:Types></wsd:Probe></soap:Body></soap:Envelope>'
 
-    multi_dict = await request.form
-    form_dict = multi_dict.to_dict()
+    xml_data = xml_to_dict(data.decode("utf-8"))
 
-    print(f"StableWSDiscoveryEndpoint POST {form_dict = }")
-    return app.redirect("/")
+    print(f"StableWSDiscoveryEndpoint {xml_data = }")
+
+    header = xml_data.get("{http://www.w3.org/2003/05/soap-envelope}Header")
+    if not header:
+        return app.redirect("/")
+
+    message_id: str | None = None
+    to_addr: str | None = None
+
+    for value in header:
+        action = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}Action")
+        if action == "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe":
+            message_id = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}MessageID")
+            to_addr = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}To")
+            break
+
+    probe_uri = request.host_url  # url_root
+
+    respond_message_id = uuid.uuid5(uuid.NAMESPACE_DNS, probe_uri)
+    relates_to = message_id
+    reply_to = "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
+
+    version = 1
+
+    print("Sending SOAP response.")
+
+    return (
+        f"""<?xml version="1.0"?>
+<soap:Envelope xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsd="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsdp="http://schemas.xmlsoap.org/ws/2006/02/devprof">
+    <soap:Header>
+        <wsa:Action>
+            http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches
+        </wsa:Action>
+        <wsa:MessageID>
+            {respond_message_id}
+        </wsa:MessageID>
+        <wsa:RelatesTo>
+            {relates_to}
+        </wsa:RelatesTo>
+        <wsa:To>
+            {reply_to}
+        </wsa:To>
+        <wsa:AppSequence InstanceId="1">
+        </wsa:AppSequence>
+    </soap:Header>
+    <soap:Body>
+        <wsd:ProbeMatches>
+            <wsd:ProbeMatch>
+                <wsd:EndpointReference>
+                    <wsd:Address>{probe_uri}</wsd:Address>
+                </wsd:EndpointReference>
+                <wsd:MetadataVersion>
+                    {version}
+                </wsd:MetadataVersion>
+            </wsd:ProbeMatch>
+        </wsd:ProbeMatches>
+    </soap:Body>
+</soap:Envelope>""",
+        200,
+        {"Content-Type": "application/xml"},
+    )
 
 
 async def serve_async(app: QuartTrio, config_obj: Config) -> None:

@@ -30,7 +30,7 @@ pip install git+https://github.com/CoolCat467/Scanner-Server.git
 ```
 
 ## Run
-Important: When you run this program, the configuration file will be saved in `$XDG_CONFIG_HOME/sane_scanner_webserver` (`~/.config` if $XDG_CONFIG_HOME not set) and the logs folder will be saved in
+Important: When you run this program, the configuration file will be saved at `$XDG_CONFIG_HOME/sane_scanner_webserver/config.toml` (`~/.config` if $XDG_CONFIG_HOME not set) and the logs folder will be saved in
 `$XDG_DATA_HOME/sane_scanner_webserver` (`~/.local/share/` if $XDG_DATA_HOME not set)
 and the program will create these files if they do not exist.
 ```console
