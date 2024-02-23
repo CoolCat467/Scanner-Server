@@ -30,9 +30,8 @@ pip install git+https://github.com/CoolCat467/Scanner-Server.git
 ```
 
 ## Run
-Important: When you run this program, the configuration file and the
-logs folder will be saved in `~/.sanescansrv/` and the program
-will create it if it does not exist.
+Important: When you run this program, the configuration file will be saved in `$XDG_CONFIG_HOME/sane_scanner_webserver/config.toml` or
+`$HOME/.config/sane_scanner_webserver/config.toml`.
 ```console
 sanescansrv
 ```
