@@ -37,7 +37,7 @@ dependencies = [
     "python-sane~=2.9.1",
     "quart~=0.19.4",
     "quart-trio~=0.11.1",
-    "trio~=0.24.0",
+    "trio~=0.25.0",
     "Werkzeug~=3.0.1",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
     'tomli >= 2.0.1; python_version < "3.11"',
@@ -101,6 +101,7 @@ select = [
     "B",     # flake8-bugbear
     "C4",    # flake8-comprehensions
     "COM",   # flake8-commas
+    "CPY",   # flake8-copyright
     "D",     # pydocstyle
     "E",     # Error
     "EXE",   # flake8-executable
@@ -187,7 +188,7 @@ legacy_tox_ini = """
 
     [gh-actions]
     python =
-        3.9: py39, pytest
+        3.9: py39, pytest, mypy
         3.10: py310, pytest
         3.11: py311, pytest
         3.12: py312, pytest, mypy
