@@ -153,27 +153,32 @@ def pretty_exception(function: Handler) -> Handler:
 
     @functools.wraps(function)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        code = None
+        code = 500
         name = "Exception"
-        desc = None
-        try:
-            return await function(*args, **kwargs)
-        except HTTPException as exception:
-            traceback.print_exception(exception)
-            code = exception.code
-            desc = exception.description
-            name = exception.name
-        except Exception as exception:
-            traceback.print_exception(exception)
-            exc_name = pretty_exception_name(exception)
-            name = f"Internal Server Error ({exc_name})"
-        code = code or 500
-        desc = desc or (
+        desc = (
             "The server encountered an internal error and "
             + "was unable to complete your request. "
             + "Either the server is overloaded or there is an error "
             + "in the application."
         )
+        try:
+            return await function(*args, **kwargs)
+        except Exception as exception:
+            # traceback.print_exception changed in 3.10
+            if sys.version_info < (3, 10):
+                tb = sys.exc_info()[2]
+                traceback.print_exception(etype=None, value=exception, tb=tb)
+            else:
+                traceback.print_exception(exception)
+
+            if isinstance(exception, HTTPException):
+                code = exception.code or code
+                desc = exception.description or desc
+                name = exception.name or name
+            else:
+                exc_name = pretty_exception_name(exception)
+                name = f"Internal Server Error ({exc_name})"
+
         return await get_exception_page(
             code,
             name,
