@@ -18,7 +18,7 @@ This is basically a web interface for scanner devices through the SANE (Scanner 
 This program is intended to be used alongside CUPS, but this should not be required.
 
 On default, the web server is hosted on port `3004`.
-This can be changed in `~/.sanescansrv/config.ini`
+This can be changed in the configuration file (more info below)
 
 You will need `libsane-dev` to be able to install `python-sane`.
 Use APT or your system's equivalent to install.
@@ -30,9 +30,9 @@ pip install git+https://github.com/CoolCat467/Scanner-Server.git
 ```
 
 ## Run
-Important: When you run this program, the configuration file and the
-logs folder will be saved in `~/.sanescansrv/` and the program
-will create it if it does not exist.
+Important: When you run this program, the configuration file will be saved in `$XDG_CONFIG_HOME/sane_scanner_webserver` (`~/.config` if $XDG_CONFIG_HOME not set) and the logs folder will be saved in
+`$XDG_DATA_HOME/sane_scanner_webserver` (`~/.local/share/` if $XDG_DATA_HOME not set)
+and the program will create these files if they do not exist.
 ```console
 sanescansrv
 ```
