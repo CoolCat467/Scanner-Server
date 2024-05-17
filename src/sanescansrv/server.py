@@ -276,12 +276,16 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         # print(f"\n{result = }")
         if not result[1]:
             continue
+
         option = sane.Option(result, device)
+
+        usable = True
         if not option.is_settable():
             # print("> Not settable")
-            continue
+            usable = False
 
-        usable = option.is_active()
+        if not option.is_active():
+            usable = False
 
         # Disable button control items for now (greyed out)
         if usable and "button" in option.name:
@@ -295,16 +299,16 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
 
         if type_ not in {"INT", "STRING", "BOOL"}:
             # print(f"type {type_!r} is invalid")
-            continue
+            usable = False
         if type_ == "BOOL":
             constraints = ["1", "0"]
         elif isinstance(option.constraint, tuple):
             if isinstance(option.constraint[0], float):
                 # print("> Float constraint")
-                continue
+                usable = False
             if option.constraint[2] == 0:
                 # print("> Zero constraint")
-                continue
+                usable = False
             range_ = range(*option.constraint)
             if len(range_) <= 5:
                 constraints = [str(i) for i in range_]
@@ -312,10 +316,10 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 constraints = [str(x) for x in option.constraint]
                 option_type = OptionType.RANGE_DROPDOWN
                 # TODO: Make range constraint work
-                continue
+                usable = False
         elif option.constraint is None:
             # print("> None constraint")
-            continue
+            usable = False
         else:
             constraints = [str(x) for x in option.constraint]
         # if len(constraints) < 2:
@@ -664,7 +668,8 @@ def get_setting_radio(setting: DeviceSetting) -> str:
             attributes["disabled"] = "disabled"
         options = {"Number": attributes}
     else:
-        raise NotImplementedError(f"{setting.option_type = }")
+        ##        raise NotImplementedError(f"{setting.option_type = }")
+        options = {f"NotImplementedError {setting.option_type = }", {"type": "text", "disabled": "disabled"}}
 
     return htmlgen.select_box(
         submit_name=setting.name,
