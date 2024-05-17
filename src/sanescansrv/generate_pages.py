@@ -437,9 +437,14 @@ def generate_scan_status_get() -> str:
                 ),
                 block=False,
             ),
-            htmlgen.wrap_tag(
-                "p",
-                f"Scan is estimated to be done in {estimate}.",
+            htmlgen.jinja_if_block(
+                {
+                    "not is_done": htmlgen.wrap_tag(
+                        "p",
+                        f"Scan is estimated to be done in {estimate}.",
+                        block=False,
+                    ),
+                },
                 block=False,
             ),
         ),
