@@ -388,6 +388,7 @@ class ScanStatus(IntEnum):
     STARTED = auto()
     IN_PROGRESS = auto()
     DONE = auto()
+    ERROR = auto()
 
 
 def fake_preform_scan(
@@ -410,7 +411,7 @@ async def preform_scan_async(
     device_name: str,
     out_type: str,
     task_status: trio.TaskStatus[Any] = trio.TASK_STATUS_IGNORED,
-) -> str:
+) -> str | None:
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
@@ -433,13 +434,27 @@ async def preform_scan_async(
         APP_STORAGE["scan_status"] = (ScanStatus.STARTED,)
         task_status.started()
         last_time = time.perf_counter_ns()
-        filename = await trio.to_thread.run_sync(
-            preform_scan,  # fake_preform_scan,
-            device_name,
-            out_type,
-            progress,
-            thread_name="preform_scan_async",
-        )
+        try:
+            filename = await trio.to_thread.run_sync(
+                preform_scan,  # fake_preform_scan,
+                device_name,
+                out_type,
+                progress,
+                thread_name="preform_scan_async",
+            )
+        except (SaneError, AttributeError) as exc:
+            # traceback.print_exception changed in 3.10
+            if sys.version_info < (3, 10):
+                tb = sys.exc_info()[2]
+                traceback.print_exception(etype=None, value=exc, tb=tb)
+            else:
+                traceback.print_exception(exc)
+
+            APP_STORAGE["scan_status"] = (
+                ScanStatus.ERROR,
+                exc,
+            )
+            return None
         ##except SaneError as ex:
         ##    if "Invalid argument" in ex.args:
         APP_STORAGE["scan_status"] = (
@@ -463,6 +478,15 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
     assert raw_status is not None
 
     status, *data = raw_status
+
+    if status == ScanStatus.ERROR:
+        exception = data[0]
+        name = pretty_exception_name(exception)
+        return await send_error(
+            "Scan Error",
+            "The following error occurred attempting to process the scan "
+            f"request: {name!r} (See server console for more details).",
+        )
 
     if status == ScanStatus.DONE:
         filename = data[0]
@@ -537,7 +561,7 @@ async def root_post() -> WerkzeugResponse | AsyncIterator[str]:
 
     if raw_status is not None:
         status, *_data = raw_status
-        if status != ScanStatus.DONE:
+        if status not in {ScanStatus.ERROR, ScanStatus.DONE}:
             return await send_error(
                 "Scan Already Currently Running",
                 "There is a scan request already running. Please wait for the previous scan to complete.",
