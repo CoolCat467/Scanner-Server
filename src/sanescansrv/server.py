@@ -248,6 +248,7 @@ class DeviceSetting:
     desc: str
     set: str | None = None
     option_type: OptionType = OptionType.RADIO
+    usable: bool = True
 
     def as_argument(self) -> str:
         """Return setting as argument."""
@@ -279,6 +280,12 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         if not option.is_settable():
             # print("> Not settable")
             continue
+
+        usable = option.is_active()
+
+        # Disable button control items for now (greyed out)
+        if usable and "button" in option.name:
+            usable = False
 
         constraints: list[str] = []
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
@@ -331,6 +338,7 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
                 unit=unit,
                 desc=option.desc,
                 option_type=option_type,
+                usable=usable,
             ),
         )
 
@@ -630,7 +638,7 @@ def get_setting_radio(setting: DeviceSetting) -> str:
         options = {x.title(): x for x in setting.options}
         if set(options.keys()) == {"1", "0"}:
             options = {"True": "1", "False": "0"}
-        if len(options) == 1 or "button" in setting.name:
+        if len(options) == 1 or not setting.usable:
             # TODO: Table one?
             for title, value in tuple(options.items()):
                 assert isinstance(value, str)
@@ -643,7 +651,10 @@ def get_setting_radio(setting: DeviceSetting) -> str:
         while len(range_control) != 3:
             range_control.append("1")
         min_, max_, step = range_control
-        options = {"Number": {"type": "number", "min": min_, "max": max_, "step": step, "value": default}}
+        attributes = {"type": "number", "min": min_, "max": max_, "step": step, "value": default}
+        if not setting.usable:
+            attributes["disabled"] = "disabled"
+        options = {"Number": attributes}
     else:
         raise NotImplementedError(f"{setting.option_type = }")
 
@@ -695,6 +706,8 @@ async def settings_post() -> WerkzeugResponse:
             continue
         idx = valid_settings[setting_name]
         if new_value not in scanner_settings[idx].options:
+            continue
+        if not scanner_settings[idx].usable:
             continue
         APP_STORAGE["device_settings"][device][idx].set = new_value
 
