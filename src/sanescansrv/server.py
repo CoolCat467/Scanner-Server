@@ -342,6 +342,8 @@ def preform_scan(
             name = setting.name.replace("-", "_")
             if setting.set is None:
                 continue
+            if not setting.usable:
+                continue
             value: str | int | float = setting.set
             if sane.TYPE_STR[device[name].type] == float_:
                 assert isinstance(value, str), f"{value = } {type(value) = }"
@@ -353,6 +355,12 @@ def preform_scan(
                 assert isinstance(value, str), f"{value = } {type(value) = }"
                 if value.isdigit():
                     value = int(value)
+                options = setting.options
+                if options and isinstance(options, tuple):
+                    min_ = options[0]
+                    # Skip autocalibration values
+                    if min_ == -1 and value == -1:
+                        continue
             try:
                 setattr(device, name, value)
             except (AttributeError, TypeError) as exc:
@@ -363,6 +371,7 @@ def preform_scan(
                     traceback.print_exception(etype=None, value=exc, tb=tb)
                 else:
                     traceback.print_exception(exc)
+                ## APP_STORAGE["device_settings"][device_name][idx].usable = False
         with device.scan(progress) as image:
             # bounds = image.getbbox()
             image.save(filepath, out_type)
@@ -492,6 +501,9 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
     delay = 5
     estimated_wait: int = 120
 
+    if status == ScanStatus.STARTED:
+        delay = 15
+
     if status == ScanStatus.IN_PROGRESS:
         progress, time_deltas_ns = data
 
@@ -511,7 +523,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
         "scan-status_get.html.jinja",
         just_started=status == ScanStatus.STARTED,
         progress=progress,
-        estimated_wait=elapsed.get_elapsed(estimated_wait),
+        estimated_wait=elapsed.get_elapsed(estimated_wait) or "0 seconds",
         refreshes_after=delay,
     )
 
@@ -656,6 +668,8 @@ def get_setting_radio(setting: DeviceSetting) -> str:
             elif setting.option_type == "FIXED":
                 attributes["step"] = "any"
                 extra += ", w/ decimal support"
+            if setting.option_type == "INT" and min_ == -1:
+                extra += " (-1 means autocalibration)"
             options = {f"Value ({setting.unit}{extra})": attributes}
     else:
         response_html = htmlgen.wrap_tag(
