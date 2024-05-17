@@ -12,7 +12,7 @@
       <h1>{% if just_started %}Just Started Scanning{% else %}Scan Is In Progress{% endif %}</h1>
       <div class="box">
         <p>{% if just_started %}Just Started.{% elif progress[0] == progress[1] %}Just finished, saving file...{% else %}<strong>{{ (progress[0] / progress[1] * 100)|round(2) }}%</strong> Complete{% endif %}</p>
-        <p>Scan is estimated to be done in <strong>{{ estimated_wait }}</strong> second{% if estimated_wait > 1 %}s{% elif estimated_wait == 0 %}s{% endif %}.</p>
+        <p>Scan is estimated to be done in <strong>{{ estimated_wait }}</strong>.</p>
       </div>
       <hr>
       <i>This page will automatically refresh after {{ refreshes_after }} second{% if refreshes_after > 1 %}s{% elif refreshes_after == 0 %}s{% endif %}.</i>

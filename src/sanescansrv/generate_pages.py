@@ -414,8 +414,9 @@ def generate_scan_status_get() -> str:
     percent_complete = htmlgen.wrap_tag("strong", f"{percent}%", block=False)
 
     estimate_strong = htmlgen.wrap_tag("strong", estimated_wait, block=False)
-    estimate_plural = htmlgen.jinja_number_plural("estimated_wait", "second")
-    estimate = f"{estimate_strong} {estimate_plural}"
+    ##estimate_plural = htmlgen.jinja_number_plural("estimated_wait", "second")
+    ##estimate = f"{estimate_strong} {estimate_plural}"
+    estimate = estimate_strong
 
     refresh_link = htmlgen.create_link("/scan-status", "this link")
 

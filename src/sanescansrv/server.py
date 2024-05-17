@@ -50,7 +50,7 @@ from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug.exceptions import HTTPException
 
-from sanescansrv import htmlgen, logger
+from sanescansrv import elapsed, htmlgen, logger
 from sanescansrv.logger import log
 
 if sys.version_info < (3, 11):
@@ -228,14 +228,6 @@ def get_devices() -> dict[str, str]:
     return devices
 
 
-class OptionType(IntEnum):
-    """Option Types for Device Settings."""
-
-    RADIO = auto()
-    CHECK = auto()
-    RANGE_DROPDOWN = auto()
-
-
 @dataclass
 class DeviceSetting:
     """Setting for device."""
@@ -246,8 +238,8 @@ class DeviceSetting:
     default: str
     unit: str
     desc: str
+    option_type: str
     set: str | None = None
-    option_type: OptionType = OptionType.RADIO
     usable: bool = True
 
     def as_argument(self) -> str:
@@ -291,41 +283,15 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         if usable and "button" in option.name:
             usable = False
 
-        constraints: list[str] = []
+        constraints = []
+        if option.constraint is not None:
+            constraints = option.constraint
+            if isinstance(constraints, tuple) and len(constraints) != 3:
+                usable = False
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
         # print(f'{type_ = }')
 
-        option_type = OptionType.RADIO
-
-        if type_ not in {"INT", "STRING", "BOOL"}:
-            # print(f"type {type_!r} is invalid")
-            usable = False
-        if type_ == "BOOL":
-            constraints = ["1", "0"]
-        elif isinstance(option.constraint, tuple):
-            usable = False
-        ##            if isinstance(option.constraint[0], float):
-        ##                # print("> Float constraint")
-        ##                usable = False
-        ##            if option.constraint[2] == 0:
-        ##                # print("> Zero constraint")
-        ##                usable = False
-        ##            range_ = range(*option.constraint)
-        ##            if len(range_) <= 5:
-        ##                constraints = [str(i) for i in range_]
-        ##            else:
-        ##                constraints = [str(x) for x in option.constraint]
-        ##                option_type = OptionType.RANGE_DROPDOWN
-        ##                # TODO: Make range constraint work
-        ##                usable = False
-        elif option.constraint is None:
-            # print("> None constraint")
-            usable = False
-        else:
-            constraints = [str(x) for x in option.constraint]
-        # if len(constraints) < 2:
-        #     print("> Less than two constraints")
-        #     continue
+        option_type = type_
 
         default = "None"
         with contextlib.suppress(AttributeError, ValueError):
@@ -369,20 +335,28 @@ def preform_scan(
     filepath = Path(app.static_folder) / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
+    float_ = "TYPE_FIXED"
 
     with sane.open(device_name) as device:
         for setting in APP_STORAGE["device_settings"][device_name]:
             name = setting.name.replace("-", "_")
             if setting.set is None:
                 continue
-            value: str | int = setting.set
-            if sane.TYPE_STR[device[name].type] in ints:
+            value: str | int | float = setting.set
+            if sane.TYPE_STR[device[name].type] == float_:
+                assert isinstance(value, str), f"{value = } {type(value) = }"
+                try:
+                    value = float(value)
+                except ValueError:
+                    continue
+            elif sane.TYPE_STR[device[name].type] in ints:
                 assert isinstance(value, str), f"{value = } {type(value) = }"
                 if value.isdigit():
                     value = int(value)
             try:
                 setattr(device, name, value)
-            except AttributeError as exc:
+            except (AttributeError, TypeError) as exc:
+                print(f"\n{name} = {value}")
                 # traceback.print_exception changed in 3.10
                 if sys.version_info < (3, 10):
                     tb = sys.exc_info()[2]
@@ -516,7 +490,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
     delay = 5
-    estimated_wait: int = 9999
+    estimated_wait: int = 120
 
     if status == ScanStatus.IN_PROGRESS:
         progress, time_deltas_ns = data
@@ -537,7 +511,7 @@ async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
         "scan-status_get.html.jinja",
         just_started=status == ScanStatus.STARTED,
         progress=progress,
-        estimated_wait=estimated_wait,
+        estimated_wait=elapsed.get_elapsed(estimated_wait),
         refreshes_after=delay,
     )
 
@@ -645,38 +619,79 @@ async def scanners_get() -> AsyncIterator[str]:
 
 def get_setting_radio(setting: DeviceSetting) -> str:
     """Return setting radio section."""
+    box_title = f"{setting.title} - {setting.desc}"
+
     default = setting.default if setting.set is None else setting.set
     options: Mapping[str, str | dict[str, str]] = {}
-    if setting.option_type == OptionType.RADIO:
-        options = {x.title(): x for x in setting.options}
-        if set(options.keys()) == {"1", "0"}:
-            options = {"True": "1", "False": "0"}
-        if len(options) == 1 or not setting.usable:
-            # TODO: Table one?
-            for title, value in tuple(options.items()):
-                assert isinstance(value, str)
+
+    options: dict[str, str | dict[str, str]] = {}
+    if setting.option_type == "BOOL":
+        options = {"True": "1", "False": "0"}
+    elif setting.option_type == "STRING":
+        options = {f"{x}".title(): x for x in setting.options}
+    elif setting.option_type in {"INT", "FIXED"}:
+        if isinstance(setting.options, list):
+            options = {x: x for x in (str(x) for x in setting.options)}
+        elif isinstance(setting.options, tuple):
+            attributes = {"type": "number", "value": default}
+            extra = ""
+            if len(setting.options) != 3:
+                response_html = htmlgen.wrap_tag(
+                    "p",
+                    "Numerical range constraints are invalid, please report!",
+                    block=False,
+                )
+                return htmlgen.contain_in_box(response_html, box_title)
+            min_, max_, step = setting.options
+            attributes.update(
+                {
+                    "min": min_,
+                    "max": max_,
+                },
+            )
+            extra = f", Min {min_}, Max {max_}"
+            if step != 0:
+                attributes["step"] = step
+                if step != 1:
+                    extra += f", Step {step}"
+            elif setting.option_type == "FIXED":
+                attributes["step"] = "any"
+                extra += ", w/ decimal support"
+            options = {f"Value ({setting.unit}{extra})": attributes}
+    else:
+        response_html = htmlgen.wrap_tag(
+            "p",
+            f"No options exist for {setting.option_type!r} option types at this time.",
+            block=False,
+        )
+        return htmlgen.contain_in_box(response_html, box_title)
+    ##else:
+    ##    formatted = pprint.pformat(setting)
+    ##    formatted = formatted.replace(" ", "&nbsp;")
+    ##    response_html = htmlgen.wrap_tag(
+    ##        "textarea",
+    ##        formatted,
+    ##        readonly="",
+    ##        rows=len(formatted.splitlines()),
+    ##        cols=80,
+    ##    )
+    ##    return htmlgen.contain_in_box(response_html, f"{setting.title} - {setting.desc}")
+
+    if not setting.usable:
+        for title, value in tuple(options.items()):
+            if isinstance(value, str):
                 options[title] = {
                     "value": value,
                     "disabled": "disabled",
                 }
-    elif setting.option_type == OptionType.RANGE_DROPDOWN:
-        range_control = list(setting.options)
-        while len(range_control) != 3:
-            range_control.append("1")
-        min_, max_, step = range_control
-        attributes = {"type": "number", "min": min_, "max": max_, "step": step, "value": default}
-        if not setting.usable:
-            attributes["disabled"] = "disabled"
-        options = {"Number": attributes}
-    else:
-        ##        raise NotImplementedError(f"{setting.option_type = }")
-        options = {f"NotImplementedError {setting.option_type = }", {"type": "text", "disabled": "disabled"}}
+            else:
+                options[title].update({"disabled": "disabled"})
 
     return htmlgen.select_box(
         submit_name=setting.name,
         options=options,
         default=default,
-        box_title=f"{setting.title} - {setting.desc}",
+        box_title=box_title,
     )
 
 
@@ -719,10 +734,23 @@ async def settings_post() -> WerkzeugResponse:
         if setting_name not in valid_settings:
             continue
         idx = valid_settings[setting_name]
-        if new_value not in scanner_settings[idx].options:
-            continue
         if not scanner_settings[idx].usable:
             continue
+        options = scanner_settings[idx].options
+        if isinstance(options, list) and new_value not in options:
+            continue
+        if isinstance(options, tuple):
+            if len(options) != 3:
+                raise RuntimeError("Should be unreachable")
+            try:
+                as_float = float(new_value)
+            except ValueError:
+                continue
+            min_, max_, step = options
+            if as_float < min_ or as_float > max_:
+                continue
+            if step and as_float % step != 0:
+                continue
         APP_STORAGE["device_settings"][device][idx].set = new_value
 
     # Return to page for that scanner
