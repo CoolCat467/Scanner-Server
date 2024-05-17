@@ -252,7 +252,7 @@ def select_dict(
             # Otherwise user can define field type.
             attributes = dict(value_data)  # type: ignore[arg-type]
             field_type = attributes.pop("type", "radio")
-        if "value" in attributes and attributes["value"] == default:
+        if field_type == "radio" and "value" in attributes and attributes["value"] == default:
             attributes["checked"] = "checked"
         lines.append(
             input_field(
