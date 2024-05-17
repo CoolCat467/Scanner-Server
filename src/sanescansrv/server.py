@@ -540,6 +540,10 @@ async def root_get() -> AsyncIterator[str]:
         # default, if default device does not exist
         # there simply won't be a default shown.
         default = APP_STORAGE["default_device"]
+        # If default not in scanners list,
+        if default not in scanners.values():
+            # Set default to first scanner
+            default = sorted(scanners.values())[0]
 
     return await stream_template(
         "root_get.html.jinja",
