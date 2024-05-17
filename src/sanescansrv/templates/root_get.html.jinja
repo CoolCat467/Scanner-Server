@@ -12,9 +12,7 @@
       <b>Press Scan to start scanning.</b>
       <form name="scan_request" method="post">
         <div class="box">
-          <span>
-            Select Image format:
-          </span>
+          <span>Select Image format:</span>
           <br>
           <br>
           <input type="radio" id="img_format_0" name="img_format" value="png" checked="checked">
@@ -31,9 +29,7 @@
           <br>
         </div>
         <div class="box">
-          <span>
-            Select a Scanner:
-          </span>
+          <span>Select a Scanner:</span>
           <br>
           {% for display, value in scanners.items() %}
           <input {% if value == default %}checked="checked"{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ value }}">

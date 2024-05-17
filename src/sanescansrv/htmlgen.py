@@ -174,7 +174,7 @@ def contain_in_box(inside: str, name: str | None = None) -> str:
     if name is not None:
         inside = "\n".join(
             (
-                wrap_tag("span", name),
+                wrap_tag("span", name, block=False),
                 tag("br"),
                 inside,
             ),
