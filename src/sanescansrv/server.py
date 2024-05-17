@@ -234,7 +234,7 @@ class DeviceSetting:
 
     name: str
     title: str
-    options: list[str]
+    options: list[str | int] | tuple[int | float, int | float, int | float]
     default: str
     unit: str
     desc: str
@@ -283,10 +283,10 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         if usable and "button" in option.name:
             usable = False
 
-        constraints = []
+        constraints: list[str | int] | tuple[int | float, int | float, int | float] = []
         if option.constraint is not None:
             constraints = option.constraint
-            if isinstance(constraints, tuple) and len(constraints) != 3:
+            if isinstance(option.constraint, tuple) and len(option.constraint) != 3:
                 usable = False
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
         # print(f'{type_ = }')
@@ -624,19 +624,18 @@ def get_setting_radio(setting: DeviceSetting) -> str:
     default = setting.default if setting.set is None else setting.set
     options: Mapping[str, str | dict[str, str]] = {}
 
-    options: dict[str, str | dict[str, str]] = {}
     if setting.option_type == "BOOL":
         options = {"True": "1", "False": "0"}
     elif setting.option_type == "STRING":
-        options = {f"{x}".title(): x for x in setting.options}
+        options = {f"{x}".title(): f"{x}" for x in setting.options}
     elif setting.option_type in {"INT", "FIXED"}:
         if isinstance(setting.options, list):
-            options = {x: x for x in (str(x) for x in setting.options)}
+            options = {x: x for x in (f"{x}" for x in setting.options)}
         elif isinstance(setting.options, tuple):
-            attributes = {"type": "number", "value": default}
+            attributes: dict[str, str] = {"type": "number", "value": f"{default}"}
             extra = ""
             if len(setting.options) != 3:
-                response_html = htmlgen.wrap_tag(
+                response_html = htmlgen.wrap_tag(  # type: ignore[unreachable]
                     "p",
                     "Numerical range constraints are invalid, please report!",
                     block=False,
@@ -645,13 +644,13 @@ def get_setting_radio(setting: DeviceSetting) -> str:
             min_, max_, step = setting.options
             attributes.update(
                 {
-                    "min": min_,
-                    "max": max_,
+                    "min": f"{min_}",
+                    "max": f"{max_}",
                 },
             )
             extra = f", Min {min_}, Max {max_}"
             if step != 0:
-                attributes["step"] = step
+                attributes["step"] = f"{step}"
                 if step != 1:
                     extra += f", Step {step}"
             elif setting.option_type == "FIXED":
@@ -685,7 +684,8 @@ def get_setting_radio(setting: DeviceSetting) -> str:
                     "disabled": "disabled",
                 }
             else:
-                options[title].update({"disabled": "disabled"})
+                assert isinstance(options[title], dict)
+                options[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
 
     return htmlgen.select_box(
         submit_name=setting.name,
