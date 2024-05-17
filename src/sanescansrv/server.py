@@ -633,7 +633,7 @@ async def scanners_get() -> AsyncIterator[str]:
     )
 
 
-def get_setting_radio(setting: DeviceSetting) -> str:
+def get_setting_radio(setting: DeviceSetting) -> str | None:
     """Return setting radio section."""
     box_title = f"{setting.title} - {setting.desc}"
 
@@ -676,13 +676,16 @@ def get_setting_radio(setting: DeviceSetting) -> str:
                 extra += " (-1 means autocalibration)"
             options = {f"Value ({setting.unit}{extra})": attributes}
     else:
-        response_html = htmlgen.wrap_tag(
-            "p",
-            f"No options exist for {setting.option_type!r} option types at this time.",
-            block=False,
-        )
-        return htmlgen.contain_in_box(response_html, box_title)
+        return None
     ##else:
+    ##    response_html = htmlgen.wrap_tag(
+    ##        "p",
+    ##        f"No options exist for {setting.option_type!r} option types at this time.",
+    ##        block=False,
+    ##    )
+    ##    return htmlgen.contain_in_box(response_html, box_title)
+    ##else:
+    ##    import pprint
     ##    formatted = pprint.pformat(setting)
     ##    formatted = formatted.replace(" ", "&nbsp;")
     ##    response_html = htmlgen.wrap_tag(
@@ -694,16 +697,27 @@ def get_setting_radio(setting: DeviceSetting) -> str:
     ##    )
     ##    return htmlgen.contain_in_box(response_html, f"{setting.title} - {setting.desc}")
 
+    # Don't display options without settings.
+    if not options:
+        return None
+
+    # If no options to select from, no need to display and waste screen space
+    if len(options) == 1 and setting.option_type not in {"INT", "FIXED"}:
+        return None
+
     if not setting.usable:
-        for title, value in tuple(options.items()):
-            if isinstance(value, str):
-                options[title] = {
-                    "value": value,
-                    "disabled": "disabled",
-                }
-            else:
-                assert isinstance(options[title], dict)
-                options[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
+        # If not changeable, why display to user? That's asking for confusion.
+        return None
+        # Disable option
+        ##for title, value in tuple(options.items()):
+        ##    if isinstance(value, str):
+        ##        options[title] = {
+        ##            "value": value,
+        ##            "disabled": "disabled",
+        ##        }
+        ##    else:
+        ##        assert isinstance(options[title], dict)
+        ##        options[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
 
     return htmlgen.select_box(
         submit_name=setting.name,
@@ -727,7 +741,7 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     return await stream_template(
         "settings_get.html.jinja",
         scanner=scanner,
-        radios="\n".join(get_setting_radio(setting) for setting in scanner_settings),
+        radios="\n".join(x for x in (get_setting_radio(setting) for setting in scanner_settings) if x),
     )
 
 
