@@ -303,20 +303,21 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         if type_ == "BOOL":
             constraints = ["1", "0"]
         elif isinstance(option.constraint, tuple):
-            if isinstance(option.constraint[0], float):
-                # print("> Float constraint")
-                usable = False
-            if option.constraint[2] == 0:
-                # print("> Zero constraint")
-                usable = False
-            range_ = range(*option.constraint)
-            if len(range_) <= 5:
-                constraints = [str(i) for i in range_]
-            else:
-                constraints = [str(x) for x in option.constraint]
-                option_type = OptionType.RANGE_DROPDOWN
-                # TODO: Make range constraint work
-                usable = False
+            usable = False
+        ##            if isinstance(option.constraint[0], float):
+        ##                # print("> Float constraint")
+        ##                usable = False
+        ##            if option.constraint[2] == 0:
+        ##                # print("> Zero constraint")
+        ##                usable = False
+        ##            range_ = range(*option.constraint)
+        ##            if len(range_) <= 5:
+        ##                constraints = [str(i) for i in range_]
+        ##            else:
+        ##                constraints = [str(x) for x in option.constraint]
+        ##                option_type = OptionType.RANGE_DROPDOWN
+        ##                # TODO: Make range constraint work
+        ##                usable = False
         elif option.constraint is None:
             # print("> None constraint")
             usable = False
