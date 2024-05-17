@@ -375,7 +375,15 @@ def preform_scan(
                 assert isinstance(value, str), f"{value = } {type(value) = }"
                 if value.isdigit():
                     value = int(value)
-            setattr(device, name, value)
+            try:
+                setattr(device, name, value)
+            except AttributeError as exc:
+                # traceback.print_exception changed in 3.10
+                if sys.version_info < (3, 10):
+                    tb = sys.exc_info()[2]
+                    traceback.print_exception(etype=None, value=exc, tb=tb)
+                else:
+                    traceback.print_exception(exc)
         with device.scan(progress) as image:
             # bounds = image.getbbox()
             image.save(filepath, out_type)
@@ -450,7 +458,7 @@ async def preform_scan_async(
                 progress,
                 thread_name="preform_scan_async",
             )
-        except (SaneError, AttributeError) as exc:
+        except SaneError as exc:
             # traceback.print_exception changed in 3.10
             if sys.version_info < (3, 10):
                 tb = sys.exc_info()[2]
