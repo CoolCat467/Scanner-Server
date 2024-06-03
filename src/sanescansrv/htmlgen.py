@@ -229,7 +229,6 @@ def input_field(
         "id": field_id,
         "name": field_name,
     }
-    pre_label = field_type in {"number"}
     if args["type"] == "text":
         # Browser defaults to text
         del args["type"]
@@ -245,7 +244,8 @@ def input_field(
     lines.append(tag("input", **args))
     if field_title is not None:
         lines.append(wrap_tag("label", field_title, False, for_=field_id))
-    if pre_label:
+    # If label should be before, reverse.
+    if field_type in {"number"}:
         return "\n".join(reversed(lines))
     return "\n".join(lines)
 
