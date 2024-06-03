@@ -479,7 +479,7 @@ async def preform_scan_async(
 
 @app.get("/scan-status")  # type: ignore[type-var]
 @pretty_exception
-async def scan_status_get() -> AsyncIterator[str] | WerkzeugResponse:
+async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse:
     """Handle scan status GET request."""
     raw_status = APP_STORAGE.get("scan_status")
     if raw_status is None:
@@ -565,7 +565,7 @@ async def root_get() -> AsyncIterator[str]:
 
 @app.post("/")  # type: ignore[type-var]
 @pretty_exception
-async def root_post() -> WerkzeugResponse | AsyncIterator[str]:
+async def root_post() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
     """Handle page POST."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
@@ -619,7 +619,7 @@ async def update_scanners_async() -> bool:
 
 @app.get("/update_scanners")  # type: ignore[type-var]
 @pretty_exception
-async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str]:
+async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
     """Update scanners get handling."""
     success = await update_scanners_async()
     if not success:
@@ -758,8 +758,8 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     )
 
 
-@app.post("/settings")
-async def settings_post() -> WerkzeugResponse:
+@app.post("/settings")  # type: ignore[type-var]
+async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     """Handle settings page POST."""
     scanner = request.args.get("scanner", "none")
 
