@@ -761,15 +761,21 @@ async def settings_post() -> WerkzeugResponse:
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
+    if data.get("settings_update_submit_button"):
+        data.pop("settings_update_submit_button")
+
     for setting_name, new_value in data.items():
         # Input validation
         if setting_name not in valid_settings:
+            print(f"{setting_name!r} not valid")
             continue
         idx = valid_settings[setting_name]
         if not scanner_settings[idx].usable:
+            print(f"{setting_name!r} not usable")
             continue
         options = scanner_settings[idx].options
-        if isinstance(options, list) and new_value not in options:
+        if isinstance(options, list) and str(new_value) not in set(map(str, options)):
+            print(f"{setting_name!r}[{new_value!r}] invalid option")
             continue
         if isinstance(options, tuple):
             if len(options) != 3:
@@ -777,11 +783,14 @@ async def settings_post() -> WerkzeugResponse:
             try:
                 as_float = float(new_value)
             except ValueError:
+                print(f"{setting_name!r}[{new_value!r}] invalid float")
                 continue
             min_, max_, step = options
             if as_float < min_ or as_float > max_:
+                print(f"{setting_name!r}[{new_value!r}] out of bounds")
                 continue
             if step and as_float % step != 0:
+                print(f"{setting_name!r}[{new_value!r}] bad step multiple")
                 continue
         APP_STORAGE["device_settings"][device][idx].set = new_value
 
