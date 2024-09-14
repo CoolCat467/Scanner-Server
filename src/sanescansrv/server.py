@@ -998,10 +998,15 @@ use_reloader = false
     if target == "None":
         print("No default device in config file.\n")
 
+    ip_address: str | None = None
+    if "--local" in sys.argv[1:]:
+        ip_address = "127.0.0.1"
+
     serve_scanner(
         target,
         secure_bind_port=secure_bind_port,
         insecure_bind_port=insecure_bind_port,
+        ip_addr=ip_address,
         hypercorn=hypercorn,
     )
 
