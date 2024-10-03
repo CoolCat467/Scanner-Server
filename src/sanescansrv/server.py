@@ -341,7 +341,7 @@ def preform_scan(
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"{str(uuid.uuid4())}_scan.{out_type}"
-    # assert app.static_folder is not None
+    assert app.static_folder is not None
     if not path.exists("/tmp/sanesansrv/"):
         makedirs("/tmp/sanesansrv/")
     if not path.exists(Path(app.static_folder+"/scans")):
