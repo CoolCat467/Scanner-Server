@@ -32,6 +32,7 @@ import statistics
 import sys
 import time
 import traceback
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
@@ -42,7 +43,6 @@ from urllib.parse import urlencode
 
 import sane
 import trio
-import uuid
 from hypercorn.config import Config
 from hypercorn.trio import serve
 from PIL import Image
@@ -340,12 +340,12 @@ def preform_scan(
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
-    filename = f"{str(uuid.uuid4())}_scan.{out_type}"
+    filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
     if not path.exists("/tmp/sanesansrv/"):
         makedirs("/tmp/sanesansrv/")
-    if not path.exists(Path(app.static_folder+"/scans")):
-        symlink("/tmp/sanesansrv/", Path(app.static_folder+"/scans"))
+    if not path.exists(Path(app.static_folder + "/scans")):
+        symlink("/tmp/sanesansrv/", Path(app.static_folder + "/scans"))
     filepath = Path("/tmp/sanesansrv/") / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
