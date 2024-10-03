@@ -936,7 +936,7 @@ def serve_scanner(
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
-                log("Shutting down from keyboard interrupt")
+                log("Shutting down from keyboard interrupt", log_dir=logs_path)
                 caught = True
                 break
         if not caught:
