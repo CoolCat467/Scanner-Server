@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import getenv, makedirs, path
 from pathlib import Path
+from shutil import rmtree
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
 
@@ -73,6 +74,7 @@ FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
 CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
 DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
 MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
+TEMP_PATH = Path(tempfile.mkdtemp(suffix="_sane_scan_srv"))
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -344,10 +346,9 @@ def preform_scan(
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    temp_folder = Path(tempfile.gettempdir()) / "sane_scan_srv"
-    if not temp_folder.exists():
-        makedirs(temp_folder)
-    filepath = temp_folder / filename
+    if not TEMP_PATH.exists():
+        makedirs(TEMP_PATH)
+    filepath = TEMP_PATH / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
     float_ = "TYPE_FIXED"
@@ -487,8 +488,7 @@ async def preform_scan_async(
 @pretty_exception
 async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
     """Handle scan result page GET request."""
-    temp_folder = Path(tempfile.gettempdir()) / "sane_scan_srv"
-    temp_file = temp_folder / scan_filename
+    temp_file = TEMP_PATH / scan_filename
     if not temp_file.exists():
         response_body = await send_error(
             page_title="404: Could Not Find Requested Scan.",
@@ -962,6 +962,10 @@ def serve_scanner(
                 break
         if not caught:
             raise
+
+    # Delete temporary files if they exist
+    if TEMP_PATH.exists():
+        rmtree(TEMP_PATH, ignore_errors=True)
 
 
 def run() -> None:
