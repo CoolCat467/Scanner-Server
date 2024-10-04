@@ -479,6 +479,7 @@ async def preform_scan_async(
         )
     return filename
 
+
 @app.get("/scan/<scan_filename>")
 @pretty_exception
 async def handle_scans_get(scan_filename: str) -> None:
