@@ -154,13 +154,21 @@ def generate_style_css() -> str:
                 "#noticeText",
                 font_size="10px",
                 display="inline-block",
+<<<<<<< HEAD
                 white_space="normal",
+=======
+                white_space="normal",  # change here
+>>>>>>> 4bc259dc5c4abca288c72790a737437e35f50336
             ),
             htmlgen.css(
                 'input[type="submit"]',
                 border=("1.5px", "solid", "black"),
                 border_radius="4px",
+<<<<<<< HEAD
                 padding="0.5rem",
+=======
+                padding="0.5rem",  # change here
+>>>>>>> 4bc259dc5c4abca288c72790a737437e35f50336
                 margin_left="0.5rem",
                 margin_right="0.5rem",
                 min_width="min-content",
