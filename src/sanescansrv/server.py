@@ -30,6 +30,7 @@ import math
 import socket
 import statistics
 import sys
+import tempfile
 import time
 import traceback
 import uuid
@@ -61,6 +62,7 @@ else:
     import tomllib
 
 if TYPE_CHECKING:
+    from quart.wrappers.response import Response as QuartResponse
     from werkzeug import Response as WerkzeugResponse
 
 HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
@@ -342,9 +344,10 @@ def preform_scan(
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    if not path.exists("/tmp/sane_scan_srv/"):
-        makedirs("/tmp/sane_scan_srv/")
-    filepath = Path("/tmp/sane_scan_srv/") / filename
+    temp_folder = Path(tempfile.gettempdir()) / "sane_scan_srv"
+    if not temp_folder.exists():
+        makedirs(temp_folder)
+    filepath = temp_folder / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
     float_ = "TYPE_FIXED"
@@ -480,10 +483,19 @@ async def preform_scan_async(
     return filename
 
 
-@app.get("/scan/<scan_filename>")
+@app.get("/scan/<scan_filename>")  # type: ignore[type-var]
 @pretty_exception
-async def handle_scans_get(scan_filename: str) -> None:
-    return await send_file(Path("/tmp/sane_scan_srv/" + scan_filename))
+async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
+    """Handle scan result page GET request."""
+    temp_folder = Path(tempfile.gettempdir()) / "sane_scan_srv"
+    temp_file = temp_folder / scan_filename
+    if not temp_file.exists():
+        response_body = await send_error(
+            page_title="404: Could Not Find Requested Scan.",
+            error_body="Requested scan not found.",
+        )
+        return (response_body, 404)
+    return await send_file(temp_file, attachment_filename=scan_filename)
 
 
 @app.get("/scan-status")  # type: ignore[type-var]
