@@ -36,7 +36,7 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from os import getenv, makedirs, path, symlink
+from os import getenv, makedirs, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
@@ -342,11 +342,9 @@ def preform_scan(
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    if not path.exists("/tmp/sanesansrv/"):
-        makedirs("/tmp/sanesansrv/")
-    if not path.exists(Path(app.static_folder + "/scans")):
-        symlink("/tmp/sanesansrv/", Path(app.static_folder + "/scans"))
-    filepath = Path("/tmp/sanesansrv/") / filename
+    if not path.exists("/tmp/sane_scan_srv/"):
+        makedirs("/tmp/sane_scan_srv/")
+    filepath = Path("/tmp/sane_scan_srv/") / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
     float_ = "TYPE_FIXED"
