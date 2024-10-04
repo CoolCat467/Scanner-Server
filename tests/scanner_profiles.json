@@ -1,0 +1,24 @@
+{
+    "profiles": [
+        {
+            "name": "Default",
+            "resolution": "300dpi",
+            "format": "PDF",
+            "color_mode": "Grayscale",
+            "custom_settings": {
+                "duplex": true,
+                "brightness": 50
+            }
+        },
+        {
+            "name": "High-Quality",
+            "resolution": "600dpi",
+            "format": "TIFF",
+            "color_mode": "Color",
+            "custom_settings": {
+                "duplex": false,
+                "brightness": 70
+            }
+        }
+    ]
+}
