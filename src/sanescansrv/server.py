@@ -46,7 +46,7 @@ import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
 from PIL import Image
-from quart import request
+from quart import request, send_file
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug.exceptions import HTTPException
@@ -479,6 +479,11 @@ async def preform_scan_async(
         )
     return filename
 
+@app.get("/scan/<scan_filename>")
+@pretty_exception
+async def handle_scans_get(scan_filename: str) -> None:
+    return await send_file(Path("/tmp/sane_scan_srv/" + scan_filename))
+
 
 @app.get("/scan-status")  # type: ignore[type-var]
 @pretty_exception
@@ -508,7 +513,7 @@ async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], in
 
     if status == ScanStatus.DONE:
         filename = data[0]
-        return app.redirect(f"/scans/{filename}")
+        return app.redirect(f"/scan/{filename}")
 
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
