@@ -30,13 +30,16 @@ import math
 import socket
 import statistics
 import sys
+import tempfile
 import time
 import traceback
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import getenv, makedirs, path
 from pathlib import Path
+from shutil import rmtree
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
 
@@ -45,7 +48,7 @@ import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
 from PIL import Image
-from quart import request
+from quart import request, send_file
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug.exceptions import HTTPException
@@ -60,6 +63,7 @@ else:
     import tomllib
 
 if TYPE_CHECKING:
+    from quart.wrappers.response import Response as QuartResponse
     from werkzeug import Response as WerkzeugResponse
 
 HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
@@ -70,6 +74,7 @@ FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
 CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
 DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
 MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
+TEMP_PATH = Path(tempfile.mkdtemp(suffix="_sane_scan_srv"))
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -339,9 +344,11 @@ def preform_scan(
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
-    filename = f"scan.{out_type}"
+    filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    filepath = Path(app.static_folder) / filename
+    if not TEMP_PATH.exists():
+        makedirs(TEMP_PATH)
+    filepath = TEMP_PATH / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
     float_ = "TYPE_FIXED"
@@ -477,6 +484,20 @@ async def preform_scan_async(
     return filename
 
 
+@app.get("/scan/<scan_filename>")  # type: ignore[type-var]
+@pretty_exception
+async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
+    """Handle scan result page GET request."""
+    temp_file = TEMP_PATH / scan_filename
+    if not temp_file.exists():
+        response_body = await send_error(
+            page_title="404: Could Not Find Requested Scan.",
+            error_body="Requested scan not found.",
+        )
+        return (response_body, 404)
+    return await send_file(temp_file, attachment_filename=scan_filename)
+
+
 @app.get("/scan-status")  # type: ignore[type-var]
 @pretty_exception
 async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse:
@@ -505,7 +526,7 @@ async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], in
 
     if status == ScanStatus.DONE:
         filename = data[0]
-        return app.redirect(f"/{filename}")
+        return app.redirect(f"/scan/{filename}")
 
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
@@ -941,6 +962,10 @@ def serve_scanner(
                 break
         if not caught:
             raise
+
+    # Delete temporary files if they exist
+    if TEMP_PATH.exists():
+        rmtree(TEMP_PATH, ignore_errors=True)
 
 
 def run() -> None:
