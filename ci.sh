@@ -8,8 +8,10 @@ uname -a
 env | sort
 echo "::endgroup::"
 
+echo "::group::Install libsane"
 # Install libsane
 sudo apt-get update && sudo apt-get install -y libsane-dev
+echo "::endgroup::"
 
 
 ################################################################
@@ -76,7 +78,7 @@ else
     echo "::endgroup::"
     echo "::group::Coverage"
 
-    coverage combine --rcfile ../pyproject.toml
+    #coverage combine --rcfile ../pyproject.toml
     coverage report -m --rcfile ../pyproject.toml
     coverage xml --rcfile ../pyproject.toml
 
