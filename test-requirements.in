@@ -2,6 +2,7 @@
 pytest >= 5.0         # for faulthandler in core
 coverage >= 7.2.5
 pytest-trio
+pytest-cov
 
 # Tools
 black; implementation_name == "cpython"

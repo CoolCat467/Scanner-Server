@@ -26,7 +26,9 @@ colorama==0.4.6 ; sys_platform == 'win32' or platform_system == 'Windows'
     #   click
     #   pytest
 coverage==7.6.1
-    # via -r test-requirements.in
+    # via
+    #   -r test-requirements.in
+    #   pytest-cov
 exceptiongroup==1.2.2
     # via
     #   -r test-requirements.in
@@ -103,7 +105,10 @@ pycparser==2.22 ; implementation_name != 'pypy' and os_name == 'nt'
 pytest==8.3.3
     # via
     #   -r test-requirements.in
+    #   pytest-cov
     #   pytest-trio
+pytest-cov==5.0.0
+    # via -r test-requirements.in
 pytest-trio==0.8.0
     # via -r test-requirements.in
 python-sane==2.9.1
@@ -122,10 +127,11 @@ sortedcontainers==2.4.0
     # via trio
 taskgroup==0.0.0a4 ; python_full_version < '3.11'
     # via hypercorn
-tomli==2.0.2 ; python_full_version < '3.11'
+tomli==2.0.2 ; python_full_version <= '3.11'
     # via
     #   -r test-requirements.in
     #   black
+    #   coverage
     #   hypercorn
     #   mypy
     #   pytest
