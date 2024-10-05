@@ -55,12 +55,9 @@ def log(message: str, level: int = 1, log_dir: str | None = None) -> None:
 
     log_msg = f"[{PROGRAM_TITLE}] [{log_time}] [{log_level}] {log_message_text}"
 
-    if not path.exists(log_file):
-        with open(log_file, mode="w", encoding="utf-8") as file:
-            file.close()
+    # Open in append mode; this will create the file if it doesn't exist
     with open(log_file, mode="a", encoding="utf-8") as file:
-        file.write(f"{log_msg}\n")
-        file.close()
+        file.write(f"{log_msg}\n")  # This handles both file creation and writing
     print(log_msg)
 
 

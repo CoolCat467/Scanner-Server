@@ -1,13 +1,25 @@
-# Program-generated files
-logs/
+# Project-specific generated files
+docs/build/
+
+bench/results/
+bench/env/
+bench/trio/
+
+# Temp file during Mypy processing
+mypy_annotate.dat
+test-results.xml
 
 # MacOS files
 **/.DS_Store
 
-# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files / editor temp files
 __pycache__/
 *.py[cod]
 *$py.class
+*~
+\#*
+.#*
+*.swp
 
 # C extensions
 *.so
@@ -46,6 +58,8 @@ pip-delete-this-directory.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
+pyvenv.cfg
+.venv/
 .nox/
 .coverage
 .coverage.*
@@ -56,6 +70,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
 
 # Translations
 *.mo
@@ -133,3 +148,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Sphinx documentation
+doc/_build/
+
+# PyCharm
+.idea/
