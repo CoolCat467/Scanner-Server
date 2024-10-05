@@ -30,25 +30,27 @@ import math
 import socket
 import statistics
 import sys
+import tempfile
 import time
 import traceback
 import uuid
-import xml.etree.ElementTree as ElementTree
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from io import StringIO
 from os import getenv, makedirs, path
 from pathlib import Path
+from shutil import rmtree
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
 from urllib.parse import urlencode
 
 import sane
 import trio
+from defusedxml import ElementTree
 from hypercorn.config import Config
 from hypercorn.trio import serve
 from PIL import Image
-from quart import request
+from quart import request, send_file
 from quart.templating import stream_template
 from quart_trio import QuartTrio
 from werkzeug.exceptions import HTTPException
@@ -63,6 +65,7 @@ else:
     import tomllib
 
 if TYPE_CHECKING:
+    from quart.wrappers.response import Response as QuartResponse
     from werkzeug import Response as WerkzeugResponse
 
 HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
@@ -73,6 +76,7 @@ FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
 CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
 DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
 MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
+TEMP_PATH = Path(tempfile.mkdtemp(suffix="_sane_scan_srv"))
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -342,9 +346,11 @@ def preform_scan(
     """Scan using device and return path."""
     if out_type not in {"pnm", "tiff", "png", "jpeg"}:
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
-    filename = f"scan.{out_type}"
+    filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    filepath = Path(app.static_folder) / filename
+    if not TEMP_PATH.exists():
+        makedirs(TEMP_PATH)
+    filepath = TEMP_PATH / filename
 
     ints = {"TYPE_BOOL", "TYPE_INT"}
     float_ = "TYPE_FIXED"
@@ -480,6 +486,20 @@ async def preform_scan_async(
     return filename
 
 
+@app.get("/scan/<scan_filename>")  # type: ignore[type-var]
+@pretty_exception
+async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
+    """Handle scan result page GET request."""
+    temp_file = TEMP_PATH / scan_filename
+    if not temp_file.exists():
+        response_body = await send_error(
+            page_title="404: Could Not Find Requested Scan.",
+            error_body="Requested scan not found.",
+        )
+        return (response_body, 404)
+    return await send_file(temp_file, attachment_filename=scan_filename)
+
+
 @app.get("/scan-status")  # type: ignore[type-var]
 @pretty_exception
 async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse:
@@ -508,7 +528,7 @@ async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], in
 
     if status == ScanStatus.DONE:
         filename = data[0]
-        return app.redirect(f"/{filename}")
+        return app.redirect(f"/scan/{filename}")
 
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
@@ -852,6 +872,7 @@ async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     data = await request.data
     print(f"StableWSDiscoveryEndpoint {data = }")
 
+    # ruff: noqa: E501
     ##    data = b'<?xml version="1.0"?><soap:Envelope xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsd="http://schemas.xmlsoap.org/ws/2005/04/discovery" xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsdp="http://schemas.xmlsoap.org/ws/2006/02/devprof"><soap:Header><wsa:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe</wsa:Action><wsa:MessageID>urn:uuid:5f028002-a42e-8dd5-b754-aa91e55db7d5</wsa:MessageID><wsa:To>urn:schemas-xmlsoap-org:ws:2005:04:discovery</wsa:To></soap:Header><soap:Body><wsd:Probe><wsd:Types>wsdp:Device</wsd:Types></wsd:Probe></soap:Body></soap:Envelope>'
 
     xml_data = xml_to_dict(data.decode("utf-8"))
@@ -870,6 +891,7 @@ async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
         if action == "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe":
             message_id = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}MessageID")
             to_addr = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}To")
+            log(f"SOAP {message_id = } {to_addr = }", 0, log_dir=DATA_PATH / "logs")
             break
 
     probe_uri = request.host_url  # url_root
@@ -1017,11 +1039,15 @@ def serve_scanner(
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
-                log("Shutting down from keyboard interrupt")
+                log("Shutting down from keyboard interrupt", log_dir=str(logs_path))
                 caught = True
                 break
         if not caught:
             raise
+
+    # Delete temporary files if they exist
+    if TEMP_PATH.exists():
+        rmtree(TEMP_PATH, ignore_errors=True)
 
 
 def run() -> None:
@@ -1079,10 +1105,15 @@ use_reloader = false
     if target == "None":
         print("No default device in config file.\n")
 
+    ip_address: str | None = None
+    if "--local" in sys.argv[1:]:
+        ip_address = "127.0.0.1"
+
     serve_scanner(
         target,
         secure_bind_port=secure_bind_port,
         insecure_bind_port=insecure_bind_port,
+        ip_addr=ip_address,
         hypercorn=hypercorn,
     )
 

@@ -33,14 +33,15 @@ classifiers = [
 keywords = ["scanner", "sane", "server", "frontend"]
 dependencies = [
     "hypercorn[trio]~=0.17.3",
-    "Pillow~=10.3.0",
+    "Pillow~=10.4.0",
     "python-sane~=2.9.1",
     "quart~=0.19.4",
     "quart-trio~=0.11.1",
-    "trio~=0.25.1",
+    "trio~=0.26.0",
     "Werkzeug~=3.0.1",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
     'tomli >= 2.0.1; python_version < "3.11"',
+    "defusedxml~=0.7.1",
 ]
 
 [tool.setuptools.dynamic]
@@ -58,7 +59,7 @@ sanescansrv = "sanescansrv:run"
 sanescansrv = ["py.typed", "templates/*", "static/*"]
 
 [tool.mypy]
-mypy_path = "src"
+files = ["src/sanescansrv/",]
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_untyped_calls = true
@@ -119,7 +120,6 @@ select = [
     "SIM",   # flake8-simplify
     "SLOT",  # flake8-slots
     "TCH",   # flake8-type-checking
-    "TRIO",  # flake8-trio
     "UP",    # pyupgrade
     "W",     # Warning
     "YTT",   # flake8-2020
@@ -144,14 +144,14 @@ extend-ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov-report term-missing --cov=sanescansrv"
+addopts = "--cov-report=xml --cov-report=term-missing --cov=sanescansrv"
 testpaths = [
     "tests",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source_pkgs = ["sanescansrv"]
 omit = [
     "__init__.py",
     "generate_pages.py",
@@ -179,33 +179,3 @@ partial_branches = [
     "if .* or not _t.TYPE_CHECKING:",
     "if .* or not t.TYPE_CHECKING:",
 ]
-
-[tool.tox]
-legacy_tox_ini = """
-    [tox]
-    envlist = py39, py310, py311, py312, pytest, mypy
-    isolated_build = false
-
-    [gh-actions]
-    python =
-        3.9: py39, pytest, mypy
-        3.10: py310, pytest
-        3.11: py311, pytest
-        3.12: py312, pytest, mypy
-
-    [testenv]
-    setenv =
-        PYTHONPATH = {toxinidir}
-
-    [testenv:pytest]
-    deps =
-        pytest
-        pytest-cov
-        pytest-trio
-    commands = pytest --basetemp={envtmpdir}
-
-    [testenv:mypy]
-    deps =
-        mypy
-    commands = mypy src
-"""

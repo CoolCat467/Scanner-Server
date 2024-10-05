@@ -4,7 +4,7 @@ ci:
   autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: quarterly
   submodules: false
-  skip: [badgie]
+  skip: [badgie, regenerate-files]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -28,22 +28,31 @@ repos:
         types: [file]
         types_or: [python, pyi]
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 24.4.2
+    rev: 24.8.0
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.6.8
     hooks:
       - id: ruff
         types: [file]
         types_or: [python, pyi, toml]
+        args: ["--show-fixes"]
   - repo: https://github.com/CoolCat467/badgie
     rev: v0.9.5
     hooks:
       - id: badgie
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
+    rev: v2.3.0
     hooks:
       - id: codespell
         additional_dependencies:
           - tomli
+  - repo: local
+    hooks:
+      - id: regenerate-files
+        name: regenerate generated files
+        language: system
+        entry: python src/sanescansrv/generate_pages.py
+        pass_filenames: false
+        files: ^src\/sanescansrv\/(((htmlgen|generate_pages)\.py)|((static|templates)\/.+\.\w+))$
