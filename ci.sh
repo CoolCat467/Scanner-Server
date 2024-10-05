@@ -68,7 +68,7 @@ else
 
     echo "::endgroup::"
     echo "::group:: Run Tests"
-    if COVERAGE_PROCESS_START=$(pwd)/../pyproject.toml coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml "$(pwd)/../tests" --verbose --durations=10 $flags; then
+    if coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml "$(pwd)/../tests" --verbose --durations=10 $flags; then
         PASSED=true
     else
         PASSED=false

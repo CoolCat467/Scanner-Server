@@ -1,7 +1,7 @@
 # Scanner-Server
 Kind of like CUPS but it's for scanning, not printing.
 
-[![Tests](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CoolCat467/Scanner-Server/actions/workflows/tests.yml)
+[![Tests](https://github.com/CoolCat467/Scanner-Server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CoolCat467/Scanner-Server/actions/workflows/ci.yml)
 <!-- BADGIE TIME -->
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/CoolCat467/Scanner-Server/main.svg)](https://results.pre-commit.ci/latest/github/CoolCat467/Scanner-Server/main)
