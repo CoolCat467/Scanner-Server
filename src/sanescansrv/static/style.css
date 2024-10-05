@@ -54,12 +54,12 @@ code {
 #noticeText {
   font-size: 10px;
   display: inline-block;
-  white-space: normal; /* Allows wrapping of text */
+  white-space: normal;
 }
 input[type="submit"] {
   border: 1.5px solid black;
   border-radius: 4px;
-  padding: 0.5rem; /* rem for responsive design.*/
+  padding: 0.5rem;
   margin-left: 0.5rem;
   margin-right: 0.5rem;
   min-width: min-content;
