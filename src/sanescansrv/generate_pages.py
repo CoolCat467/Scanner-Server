@@ -514,7 +514,7 @@ def process(do_test: bool) -> int:
     elif not matches_disk:
         for path, new_source in new_files.items():
             save_content(path, new_source)
-        print("Regenerated sources successfully.")
+        print("\nRegenerated sources successfully.")
         # With pre-commit integration, show that we edited files.
         return 1
     print("Generated sources are up to date.")

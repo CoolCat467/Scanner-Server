@@ -1,0 +1,26 @@
+# For tests
+pytest >= 5.0         # for faulthandler in core
+coverage >= 7.2.5
+pytest-trio
+
+# Tools
+black; implementation_name == "cpython"
+mypy
+ruff >= 0.6.6
+uv >= 0.2.24
+codespell
+
+# https://github.com/python-trio/trio/pull/654#issuecomment-420518745
+mypy-extensions
+typing-extensions
+
+# Scanner-Server's own dependencies
+hypercorn[trio]~=0.17.3
+Pillow~=10.4.0
+python-sane~=2.9.1
+quart~=0.19.4
+quart-trio~=0.11.1
+trio~=0.26.0
+Werkzeug~=3.0.1
+exceptiongroup >= 1.2.0; python_version < "3.11"
+tomli >= 2.0.1; python_version < "3.11"
