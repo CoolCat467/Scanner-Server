@@ -27,7 +27,6 @@ from sanescansrv.server import (
     sane_run as run,
 )
 
-print(f"{__title__} v{__version__}  Copyright (C) 2023  {__author__}\n")
-
 if __name__ == "__main__":
+    print(f"{__title__} v{__version__}  Copyright (C) 2022-2024  {__author__}\n")
     run()

@@ -44,7 +44,7 @@ STATIC_FUNCTIONS: dict[Path, Callable[[], str]] = {}
 
 def save_content(path: Path, content: str) -> None:
     """Save content to given path."""
-    path.write_text(content + "\n", encoding="utf-8", newline="\n")
+    path.write_text(content + "\n", encoding="utf-8")
     print(f"Saved content to {path}")
 
 
