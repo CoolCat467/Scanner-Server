@@ -51,8 +51,6 @@ else
 
     echo "::group::Setup for tests"
 
-    CWD=$(pwd)
-
     # We run the tests from inside an empty directory, to make sure Python
     # doesn't pick up any .py files from our working dir. Might have been
     # pre-created by some of the code above.
@@ -70,7 +68,7 @@ else
 
     echo "::endgroup::"
     echo "::group:: Run Tests"
-    if COVERAGE_PROCESS_START=$(pwd)/../pyproject.toml coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml "${CWD}/tests" --verbose --durations=10 $flags; then
+    if COVERAGE_PROCESS_START=$(pwd)/../pyproject.toml coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml "$(pwd)/../tests" --verbose --durations=10 $flags; then
         PASSED=true
     else
         PASSED=false
