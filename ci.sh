@@ -17,7 +17,7 @@ sudo apt-get update && sudo apt-get install -y libsane-dev
 ################################################################
 
 echo "::group::Versions"
-python -c "import sys, struct, ssl; print('python:', sys.version); print('version_info:', sys.version_info); print('bits:', struct.calcsize('P') * 8); print('openssl:', ssl.OPENSSL_VERSION, ssl.OPENSSL_VERSION_INFO)"
+python -c "import sys, struct; print('python:', sys.version); print('version_info:', sys.version_info); print('bits:', struct.calcsize('P') * 8)"
 echo "::endgroup::"
 
 echo "::group::Install dependencies"
@@ -51,6 +51,8 @@ else
 
     echo "::group::Setup for tests"
 
+    CWD=$(pwd)
+
     # We run the tests from inside an empty directory, to make sure Python
     # doesn't pick up any .py files from our working dir. Might have been
     # pre-created by some of the code above.
@@ -64,11 +66,11 @@ else
     MYPYPATH=".." mypy --config-file= --cache-dir=./.mypy_cache -c "import sanescansrv" >/dev/null 2>/dev/null || true
 
     # support subprocess spawning with coverage.py
-    echo "import coverage; coverage.process_startup()" | tee -a "$INSTALLDIR/../sitecustomize.py"
+    # echo "import coverage; coverage.process_startup()" | tee -a "$INSTALLDIR/../sitecustomize.py"
 
     echo "::endgroup::"
     echo "::group:: Run Tests"
-    if COVERAGE_PROCESS_START=$(pwd)/../pyproject.toml coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml --run-slow "${INSTALLDIR}" --verbose --durations=10 $flags; then
+    if COVERAGE_PROCESS_START=$(pwd)/../pyproject.toml coverage run --rcfile=../pyproject.toml -m pytest -ra --junitxml=../test-results.xml "${CWD}/tests" --verbose --durations=10 $flags; then
         PASSED=true
     else
         PASSED=false

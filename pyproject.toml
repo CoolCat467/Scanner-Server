@@ -150,7 +150,7 @@ testpaths = [
 
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source_pkgs = ["sanescansrv"]
 omit = [
     "__init__.py",
     "generate_pages.py",
