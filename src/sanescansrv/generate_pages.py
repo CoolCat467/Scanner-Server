@@ -37,16 +37,14 @@ SOURCE_ROOT: Final = Path.cwd()
 CORE: Final = SOURCE_ROOT / "src" / "sanescansrv"
 
 TEMPLATE_FOLDER: Final = CORE / "templates"
-TEMPLATE_FUNCTIONS: dict[str, Callable[[], str]] = {}
+TEMPLATE_FUNCTIONS: dict[Path, Callable[[], str]] = {}
 STATIC_FOLDER: Final = CORE / "static"
-STATIC_FUNCTIONS: dict[str, Callable[[], str]] = {}
+STATIC_FUNCTIONS: dict[Path, Callable[[], str]] = {}
 
 
-def save_content(path: str, content: str) -> None:
+def save_content(path: Path, content: str) -> None:
     """Save content to given path."""
-    with open(path, "w", encoding="utf-8") as fp:
-        fp.write(content)
-        fp.write("\n")
+    path.write_text(content + "\n", encoding="utf-8", newline="\n")
     print(f"Saved content to {path}")
 
 
@@ -480,18 +478,17 @@ def generate_scan_status_get() -> str:
     return template(title, body, head=head)
 
 
-def matches_disk_files(new_files: dict[str, str]) -> bool:
+def matches_disk_files(new_files: dict[Path, str]) -> bool:
     """Return if all new file contents match old file contents.
 
     Copied from src/trio/_tools/gen_exports.py, dual licensed under
     MIT and APACHE2.
     """
     for path, new_source in new_files.items():
-        path_obj = Path(path)
-        if not path_obj.exists():
+        if not path.exists():
             return False
         # Strip trailing newline `save_content` adds.
-        old_source = path_obj.read_text(encoding="utf-8")[:-1]
+        old_source = path.read_text(encoding="utf-8")[:-1]
         if old_source != new_source:
             return False
     return True
@@ -499,7 +496,7 @@ def matches_disk_files(new_files: dict[str, str]) -> bool:
 
 def process(do_test: bool) -> int:
     """Generate all page templates and static files. Return exit code."""
-    new_files: dict[str, str] = {}
+    new_files: dict[Path, str] = {}
     for filename, function in TEMPLATE_FUNCTIONS.items():
         new_files[filename] = function()
     for filename, function in STATIC_FUNCTIONS.items():
