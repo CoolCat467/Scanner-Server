@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
     branches-ignore:
       - "dependabot/**"
   pull_request:
@@ -56,6 +55,8 @@ jobs:
     name: 'Ubuntu (${{ matrix.python }}${{ matrix.extra_name }})'
     timeout-minutes: 10
     runs-on: 'ubuntu-latest'
+    # Only run for PRs or pushes to main
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     strategy:
       fail-fast: false
       matrix:
