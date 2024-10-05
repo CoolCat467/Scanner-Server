@@ -58,7 +58,7 @@ sanescansrv = "sanescansrv:run"
 sanescansrv = ["py.typed", "templates/*", "static/*"]
 
 [tool.mypy]
-mypy_path = "src"
+files = ["src/sanescansrv/",]
 check_untyped_defs = true
 disallow_any_generics = true
 disallow_untyped_calls = true
@@ -143,14 +143,14 @@ extend-ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov-report term-missing --cov=sanescansrv"
+addopts = "--cov-report=xml --cov-report=term-missing --cov=sanescansrv"
 testpaths = [
     "tests",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source_pkgs = ["sanescansrv"]
 omit = [
     "__init__.py",
     "generate_pages.py",
@@ -178,33 +178,3 @@ partial_branches = [
     "if .* or not _t.TYPE_CHECKING:",
     "if .* or not t.TYPE_CHECKING:",
 ]
-
-[tool.tox]
-legacy_tox_ini = """
-    [tox]
-    envlist = py39, py310, py311, py312, pytest, mypy
-    isolated_build = false
-
-    [gh-actions]
-    python =
-        3.9: py39, pytest, mypy
-        3.10: py310, pytest
-        3.11: py311, pytest
-        3.12: py312, pytest, mypy
-
-    [testenv]
-    setenv =
-        PYTHONPATH = {toxinidir}
-
-    [testenv:pytest]
-    deps =
-        pytest
-        pytest-cov
-        pytest-trio
-    commands = pytest --basetemp={envtmpdir}
-
-    [testenv:mypy]
-    deps =
-        mypy
-    commands = mypy src
-"""

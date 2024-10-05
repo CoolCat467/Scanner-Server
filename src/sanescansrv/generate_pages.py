@@ -510,10 +510,8 @@ def process(do_test: bool) -> int:
             return 1
     elif not matches_disk:
         for path, new_source in new_files.items():
-            # types: arg-type error: Argument 1 to "save_content" has incompatible type "Path"; expected "str"
             save_content(path, new_source)
-        # types:         ^^^^
-        print("Regenerated sources successfully.")
+        print("\nRegenerated sources successfully.")
         # With pre-commit integration, show that we edited files.
         return 1
     print("Generated sources are up to date.")
