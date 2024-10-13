@@ -4,6 +4,7 @@ set -ex
 
 ON_GITHUB_CI=true
 EXIT_STATUS=0
+PROJECT='sanescansrv'
 
 # If not running on Github's CI, discard the summaries
 if [ -z "${GITHUB_STEP_SUMMARY+x}" ]; then
@@ -13,7 +14,7 @@ fi
 
 # Test if the generated code is still up to date
 echo "::group::Generate Exports"
-python ./src/sanescansrv/generate_pages.py --test \
+python ./src/$PROJECT/generate_pages.py --test \
     || EXIT_STATUS=$?
 echo "::endgroup::"
 
@@ -23,10 +24,10 @@ echo "::endgroup::"
 # autoflake --recursive --in-place .
 # pyupgrade --py3-plus $(find . -name "*.py")
 echo "::group::Black"
-if ! black --check src/sanescansrv; then
+if ! black --check src/$PROJECT; then
     echo "* Black found issues" >> "$GITHUB_STEP_SUMMARY"
     EXIT_STATUS=1
-    black --diff src/sanescansrv
+    black --diff src/$PROJECT
     echo "::endgroup::"
     echo "::error:: Black found issues"
 else
@@ -103,8 +104,8 @@ Problems were found by static analysis (listed above).
 To fix formatting and see remaining errors, run
 
     uv pip install -r test-requirements.txt
-    black src/sanescansrv
-    ruff check src/sanescansrv
+    black src/$PROJECT
+    ruff check src/$PROJECT
     ./check.sh
 
 in your local checkout.

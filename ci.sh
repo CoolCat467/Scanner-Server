@@ -6,6 +6,7 @@ set -ex -o pipefail
 echo "::group::Environment"
 uname -a
 env | sort
+PROJECT='sanescansrv'
 echo "::endgroup::"
 
 echo "::group::Install libsane"
@@ -31,7 +32,7 @@ python -m uv pip install build
 
 python -m build
 wheel_package=$(ls dist/*.whl)
-python -m uv pip install "sanescansrv @ $wheel_package" -c test-requirements.txt
+python -m uv pip install "$PROJECT @ $wheel_package" -c test-requirements.txt
 
 if [ "$CHECK_FORMATTING" = "1" ]; then
     python -m uv pip install -r test-requirements.txt exceptiongroup
@@ -59,11 +60,11 @@ else
     mkdir empty || true
     cd empty
 
-    INSTALLDIR=$(python -c "import os, sanescansrv; print(os.path.dirname(sanescansrv.__file__))")
+    INSTALLDIR=$(python -c "import os, $PROJECT; print(os.path.dirname($PROJECT.__file__))")
     cp ../pyproject.toml "$INSTALLDIR"
 
     # get mypy tests a nice cache
-    MYPYPATH=".." mypy --config-file= --cache-dir=./.mypy_cache -c "import sanescansrv" >/dev/null 2>/dev/null || true
+    MYPYPATH=".." mypy --config-file= --cache-dir=./.mypy_cache -c "import $PROJECT" >/dev/null 2>/dev/null || true
 
     # support subprocess spawning with coverage.py
     # echo "import coverage; coverage.process_startup()" | tee -a "$INSTALLDIR/../sitecustomize.py"
