@@ -47,7 +47,6 @@ dependencies = [
 version = {attr = "sanescansrv.server.__version__"}
 
 [project.urls]
-"Homepage" = "https://github.com/CoolCat467/Scanner-Server"
 "Source" = "https://github.com/CoolCat467/Scanner-Server"
 "Bug Tracker" = "https://github.com/CoolCat467/Scanner-Server/issues"
 
