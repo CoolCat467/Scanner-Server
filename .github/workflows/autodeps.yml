@@ -28,6 +28,7 @@ jobs:
 
       - name: Bump dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y libsane-dev
           python -m pip install -U pip pre-commit
           python -m pip install -r test-requirements.txt
           uv pip compile --universal --python-version=3.9 --upgrade test-requirements.in -o test-requirements.txt
