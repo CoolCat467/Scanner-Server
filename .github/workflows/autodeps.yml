@@ -39,7 +39,7 @@ jobs:
 
       # apply newer versions' formatting
       - name: Black
-        run: black src/trio
+        run: black src/sanescansrv
 
       - name: uv
         run: |
