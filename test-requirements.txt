@@ -107,7 +107,7 @@ pytest==8.3.3
     #   -r test-requirements.in
     #   pytest-cov
     #   pytest-trio
-pytest-cov==5.0.0
+pytest-cov==6.0.0
     # via -r test-requirements.in
 pytest-trio==0.8.0
     # via -r test-requirements.in
@@ -148,7 +148,7 @@ typing-extensions==4.12.2
     #   hypercorn
     #   mypy
     #   quart
-uv==0.4.27
+uv==0.4.29
     # via -r test-requirements.in
 werkzeug==3.0.6
     # via
