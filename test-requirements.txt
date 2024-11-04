@@ -152,7 +152,7 @@ typing-extensions==4.12.2
     #   quart
 uv==0.4.29
     # via -r test-requirements.in
-werkzeug==3.0.6
+werkzeug==3.1.1
     # via
     #   -r test-requirements.in
     #   flask
