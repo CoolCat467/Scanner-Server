@@ -361,16 +361,21 @@ def preform_scan(
             if not setting.usable:
                 continue
             value: str | int | float = setting.set
-            if sane.TYPE_STR[device[name].type] == float_:
+            type_string = sane.TYPE_STR[device[name].type]
+            if type_string == float_:
                 assert isinstance(value, str), f"{value = } {type(value) = }"
                 try:
                     value = float(value)
                 except ValueError:
                     continue
-            elif sane.TYPE_STR[device[name].type] in ints:
+            elif type_string in ints:
                 assert isinstance(value, str), f"{value = } {type(value) = }"
+                negative = value.startswith("-")
+                value = value.removeprefix("-")
                 if value.isdigit():
                     value = int(value)
+                    if negative:
+                        value *= -1
                 options = setting.options
                 if options and isinstance(options, tuple):
                     min_ = options[0]
@@ -380,7 +385,7 @@ def preform_scan(
             try:
                 setattr(device, name, value)
             except (AttributeError, TypeError) as exc:
-                print(f"\n{name} = {value}")
+                print(f"\n{name} = {value!r}")
                 # traceback.print_exception changed in 3.10
                 if sys.version_info < (3, 10):
                     tb = sys.exc_info()[2]
@@ -389,7 +394,9 @@ def preform_scan(
                     traceback.print_exception(exc)
                 ## APP_STORAGE["device_settings"][device_name][idx].usable = False
         with device.scan(progress) as image:
-            # bounds = image.getbbox()
+            bounds = image.getbbox()
+            if bounds is not None:
+                image = image.crop(bounds)
             image.save(filepath, out_type)
 
     return filename
@@ -462,7 +469,7 @@ async def preform_scan_async(
                 progress,
                 thread_name="preform_scan_async",
             )
-        except SaneError as exc:
+        except (SaneError, RuntimeError) as exc:
             # traceback.print_exception changed in 3.10
             if sys.version_info < (3, 10):
                 tb = sys.exc_info()[2]
