@@ -34,13 +34,19 @@ import tempfile
 import time
 import traceback
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+)
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from os import getenv, makedirs, path
 from pathlib import Path
 from shutil import rmtree
-from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar
 from urllib.parse import urlencode
 
 import sane
@@ -64,10 +70,15 @@ else:
 
 if TYPE_CHECKING:
     from quart.wrappers.response import Response as QuartResponse
+    from typing_extensions import ParamSpec
     from werkzeug import Response as WerkzeugResponse
 
+    PS = ParamSpec("PS")
+
 HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
-XDG_DATA_HOME: Final = trio.Path(getenv("XDG_DATA_HOME", HOME / ".local" / "share"))
+XDG_DATA_HOME: Final = trio.Path(
+    getenv("XDG_DATA_HOME", HOME / ".local" / "share"),
+)
 XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
 
 FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
@@ -83,6 +94,7 @@ logger.set_title(__title__)
 SANE_INITIALIZED = False
 
 Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
+T = TypeVar("T")
 
 
 def stop_sane() -> None:
@@ -159,11 +171,16 @@ def pretty_exception_name(exc: BaseException) -> str:
     return f"{error} ({reason})"
 
 
-def pretty_exception(function: Handler) -> Handler:
+def pretty_exception(
+    function: Callable[PS, Awaitable[T]],
+) -> Callable[PS, Awaitable[T | tuple[AsyncIterator[str], int]]]:
     """Make exception pages pretty."""
 
     @functools.wraps(function)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(  # type: ignore[misc]
+        *args: PS.args,
+        **kwargs: PS.kwargs,
+    ) -> T | tuple[AsyncIterator[str], int]:
         code = 500
         name = "Exception"
         desc = (
@@ -196,7 +213,7 @@ def pretty_exception(function: Handler) -> Handler:
             desc,
         )
 
-    return cast(Handler, wrapper)
+    return wrapper
 
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
@@ -294,10 +311,15 @@ def get_device_settings(device_addr: str) -> list[DeviceSetting]:
         if usable and "button" in option.name:
             usable = False
 
-        constraints: list[str | int] | tuple[int | float, int | float, int | float] = []
+        constraints: (
+            list[str | int] | tuple[int | float, int | float, int | float]
+        ) = []
         if option.constraint is not None:
             constraints = option.constraint
-            if isinstance(option.constraint, tuple) and len(option.constraint) != 3:
+            if (
+                isinstance(option.constraint, tuple)
+                and len(option.constraint) != 3
+            ):
                 usable = False
         type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
         # print(f'{type_ = }')
@@ -493,7 +515,9 @@ async def preform_scan_async(
 
 @app.get("/scan/<scan_filename>")  # type: ignore[type-var]
 @pretty_exception
-async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
+async def handle_scan_get(
+    scan_filename: str,
+) -> tuple[AsyncIterator[str], int] | QuartResponse:
     """Handle scan result page GET request."""
     temp_file = TEMP_PATH / scan_filename
     if not temp_file.exists():
@@ -507,7 +531,9 @@ async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] 
 
 @app.get("/scan-status")  # type: ignore[type-var]
 @pretty_exception
-async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse:
+async def scan_status_get() -> (
+    AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse
+):
     """Handle scan status GET request."""
     raw_status = APP_STORAGE.get("scan_status")
     if raw_status is None:
@@ -593,7 +619,9 @@ async def root_get() -> AsyncIterator[str]:
 
 @app.post("/")  # type: ignore[type-var]
 @pretty_exception
-async def root_post() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
+async def root_post() -> (
+    WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
+):
     """Handle page POST."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
@@ -633,7 +661,9 @@ def update_scanners() -> None:
     APP_STORAGE["scanners"] = get_devices()
     for _model, device in APP_STORAGE["scanners"].items():
         if device not in APP_STORAGE["device_settings"]:
-            APP_STORAGE["device_settings"][device] = get_device_settings(device)
+            APP_STORAGE["device_settings"][device] = get_device_settings(
+                device,
+            )
 
 
 async def update_scanners_async() -> bool:
@@ -647,7 +677,9 @@ async def update_scanners_async() -> bool:
 
 @app.get("/update_scanners")  # type: ignore[type-var]
 @pretty_exception
-async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
+async def update_scanners_get() -> (
+    WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
+):
     """Update scanners get handling."""
     success = await update_scanners_async()
     if not success:
@@ -689,7 +721,10 @@ def get_setting_radio(setting: DeviceSetting) -> str | None:
         if isinstance(setting.options, list):
             options = {x: x for x in (f"{x}" for x in setting.options)}
         elif isinstance(setting.options, tuple):
-            attributes: dict[str, str] = {"type": "number", "value": f"{default}"}
+            attributes: dict[str, str] = {
+                "type": "number",
+                "value": f"{default}",
+            }
             extra = ""
             if len(setting.options) != 3:
                 response_html = htmlgen.wrap_tag(  # type: ignore[unreachable]
@@ -782,7 +817,13 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     return await stream_template(
         "settings_get.html.jinja",
         scanner=scanner,
-        radios="\n".join(x for x in (get_setting_radio(setting) for setting in scanner_settings) if x),
+        radios="\n".join(
+            x
+            for x in (
+                get_setting_radio(setting) for setting in scanner_settings
+            )
+            if x
+        ),
     )
 
 
@@ -797,7 +838,9 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     device = APP_STORAGE["scanners"][scanner]
     scanner_settings = APP_STORAGE["device_settings"][device]
 
-    valid_settings = {setting.name: idx for idx, setting in enumerate(scanner_settings)}
+    valid_settings = {
+        setting.name: idx for idx, setting in enumerate(scanner_settings)
+    }
 
     multi_dict = await request.form
     data = multi_dict.to_dict()
@@ -817,7 +860,9 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
             errors.append(f"{setting_name} not usable")
             continue
         options = scanner_settings[idx].options
-        if isinstance(options, list) and str(new_value) not in set(map(str, options)):
+        if isinstance(options, list) and str(new_value) not in set(
+            map(str, options),
+        ):
             errors.append(f"{setting_name}[{new_value}] invalid option)")
             continue
         if isinstance(options, tuple):
@@ -838,7 +883,10 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
         APP_STORAGE["device_settings"][device][idx].set = new_value
 
     if errors:
-        errors.insert(0, "Request succeeded, but the following errors were encountered:")
+        errors.insert(
+            0,
+            "Request succeeded, but the following errors were encountered:",
+        )
         return await get_exception_page(
             400,  # bad request
             "Bad Request",
@@ -850,7 +898,9 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     return app.redirect(request.url)
 
 
-@app.post("/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery")
+@app.post(
+    "/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery",
+)
 async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     """Handle stable_ws_discovery_endpoint POST."""
     data = await request.data
@@ -884,7 +934,9 @@ def serve_scanner(
 ) -> None:
     """Asynchronous Entry Point."""
     if secure_bind_port is None and insecure_bind_port is None:
-        raise ValueError("Port must be specified with `port` and or `ssl_port`!")
+        raise ValueError(
+            "Port must be specified with `port` and or `ssl_port`!",
+        )
 
     if not ip_addr:
         ip_addr = find_ip()
@@ -917,7 +969,9 @@ def serve_scanner(
         if insecure_bind_port is not None:
             raw_bound = config.get("insecure_bind", [])
             if not isinstance(raw_bound, Iterable):
-                raise ValueError("main.bind must be an iterable object (set in config file)!")
+                raise ValueError(
+                    "main.bind must be an iterable object (set in config file)!",
+                )
             bound = set(raw_bound)
             bound |= {f"{ip_addr}:{insecure_bind_port}"}
             config["insecure_bind"] = bound
@@ -927,18 +981,24 @@ def serve_scanner(
                 config["bind"] = config["insecure_bind"]
                 config["insecure_bind"] = []
 
-            insecure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            insecure_locations = combine_end(
+                f"http://{addr}" for addr in sorted(bound)
+            )
             print(f"Serving on {insecure_locations} insecurely")
 
         if secure_bind_port is not None:
             raw_bound = config.get("bind", [])
             if not isinstance(raw_bound, Iterable):
-                raise ValueError("main.bind must be an iterable object (set in config file)!")
+                raise ValueError(
+                    "main.bind must be an iterable object (set in config file)!",
+                )
             bound = set(raw_bound)
             bound |= {f"{ip_addr}:{secure_bind_port}"}
             config["bind"] = bound
 
-            secure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            secure_locations = combine_end(
+                f"http://{addr}" for addr in sorted(bound)
+            )
             print(f"Serving on {secure_locations} securely")
 
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
@@ -964,7 +1024,10 @@ def serve_scanner(
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
-                log("Shutting down from keyboard interrupt", log_dir=str(logs_path))
+                log(
+                    "Shutting down from keyboard interrupt",
+                    log_dir=str(logs_path),
+                )
                 caught = True
                 break
         if not caught:

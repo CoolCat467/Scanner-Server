@@ -47,15 +47,23 @@ def test_css_block() -> None:
 
 
 def test_css_multi_select() -> None:
-    assert htmlgen.css_block(("*", "*::"), "content") == "*, *:: {\n  content\n}"
+    assert (
+        htmlgen.css_block(("*", "*::"), "content") == "*, *:: {\n  content\n}"
+    )
 
 
 def test_css() -> None:
-    assert htmlgen.css(("h1", "footer"), text_align="center") == "h1, footer {\n  text-align: center;\n}"
+    assert (
+        htmlgen.css(("h1", "footer"), text_align="center")
+        == "h1, footer {\n  text-align: center;\n}"
+    )
 
 
 def test_css_multi() -> None:
-    assert htmlgen.css(("h1", "footer"), text_align=("center", "left")) == "h1, footer {\n  text-align: center left;\n}"
+    assert (
+        htmlgen.css(("h1", "footer"), text_align=("center", "left"))
+        == "h1, footer {\n  text-align: center left;\n}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -110,7 +118,10 @@ this is comment
 
 
 def test_wrap_comment_inline() -> None:
-    assert htmlgen.wrap_comment("smol comment", inline=True) == "<!--smol comment-->"
+    assert (
+        htmlgen.wrap_comment("smol comment", inline=True)
+        == "<!--smol comment-->"
+    )
 
 
 def test_wrap_comment_avoid_hacks() -> None:
@@ -306,7 +317,10 @@ def test_bullet_list() -> None:
 
 
 def test_create_link() -> None:
-    assert htmlgen.create_link("/ref", "title of lonk") == '<a href="/ref">title of lonk</a>'
+    assert (
+        htmlgen.create_link("/ref", "title of lonk")
+        == '<a href="/ref">title of lonk</a>'
+    )
 
 
 def test_link_list() -> None:
@@ -637,4 +651,7 @@ def test_jinja_super_block() -> None:
 
 
 def test_jinja_number_plural() -> None:
-    assert htmlgen.jinja_number_plural(3, "second") == "second{% if 3 > 1 %}s{% elif 3 == 0 %}s{% endif %}"
+    assert (
+        htmlgen.jinja_number_plural(3, "second")
+        == "second{% if 3 > 1 %}s{% elif 3 == 0 %}s{% endif %}"
+    )

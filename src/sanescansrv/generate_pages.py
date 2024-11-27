@@ -285,7 +285,7 @@ def generate_root_get() -> str:
         "Select Image format:",
     )
 
-    form_content = "\n".join((image_format, scanner_select))
+    form_content = f"{image_format}\n{scanner_select}"
 
     contents = htmlgen.form(
         "scan_request",
@@ -406,7 +406,9 @@ def generate_scan_status_get() -> str:
     refreshes_after = htmlgen.jinja_expression("refreshes_after")
     estimated_wait = htmlgen.jinja_expression("estimated_wait")
 
-    percent = htmlgen.jinja_expression("(progress[0] / progress[1] * 100)|round(2)")
+    percent = htmlgen.jinja_expression(
+        "(progress[0] / progress[1] * 100)|round(2)",
+    )
     is_done = "progress[0] == progress[1]"
 
     title = htmlgen.jinja_if_block(
@@ -428,7 +430,10 @@ def generate_scan_status_get() -> str:
 
     refresh_link = htmlgen.create_link("/scan-status", "this link")
 
-    refresh_time_plural = htmlgen.jinja_number_plural("refreshes_after", "second")
+    refresh_time_plural = htmlgen.jinja_number_plural(
+        "refreshes_after",
+        "second",
+    )
     refresh_time_display = f"{refreshes_after} {refresh_time_plural}"
 
     content = "\n".join(

@@ -1,10 +1,8 @@
 ci:
-  autofix_commit_msg: "[pre-commit.ci] auto fixes from pre-commit.com hooks"
   autofix_prs: true
-  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: quarterly
   submodules: false
-  skip: [badgie, regenerate-files]
+  skip: [badgie, project-requirements, regenerate-files]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -20,19 +18,12 @@ repos:
       - id: check-case-conflict
       - id: sort-simple-yaml
         files: .pre-commit-config.yaml
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.4.0
-    hooks:
-      - id: pycln
-        args: [--config=pyproject.toml, src]
-        types: [file]
-        types_or: [python, pyi]
   - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 24.10.0
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.2
+    rev: v0.8.0
     hooks:
       - id: ruff
         types: [file]
@@ -48,6 +39,14 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
+  - repo: local
+    hooks:
+      - id: project-requirements
+        name: regenerate requirements.in
+        language: system
+        entry: python tools/project_requirements.py
+        pass_filenames: false
+        files: ^(test-requirements.in)|(pyproject.toml)$
   - repo: local
     hooks:
       - id: regenerate-files

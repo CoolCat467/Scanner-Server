@@ -28,5 +28,7 @@ from sanescansrv.server import (
 )
 
 if __name__ == "__main__":
-    print(f"{__title__} v{__version__}  Copyright (C) 2022-2024  {__author__}\n")
+    print(
+        f"{__title__} v{__version__}  Copyright (C) 2022-2024  {__author__}\n",
+    )
     run()

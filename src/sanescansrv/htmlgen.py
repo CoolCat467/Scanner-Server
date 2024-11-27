@@ -272,7 +272,11 @@ def select_dict(
             # Otherwise user can define field type.
             attributes = dict(value_data)  # type: ignore[arg-type]
             field_type = attributes.pop("type", "radio")
-        if field_type == "radio" and "value" in attributes and attributes["value"] == default:
+        if (
+            field_type == "radio"
+            and "value" in attributes
+            and attributes["value"] == default
+        ):
             attributes["checked"] = "checked"
         lines.append(
             input_field(
@@ -560,7 +564,10 @@ def jinja_extends(template_filename: str | Iterable[str]) -> str:
     """Return jinja extends statement from given template filename."""
     # Using if else instead of ternary because it makes it confusing from
     # a types perspective and less readable
-    if isinstance(template_filename, str):  # noqa: SIM108  # ternary operator instead of if else
+    if isinstance(
+        template_filename,
+        str,
+    ):  # ternary operator instead of if else
         filename = template_filename
     else:
         filename = "/".join(template_filename)

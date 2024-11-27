@@ -57,7 +57,9 @@ class Result:
 def process_line(line: str) -> Result | None:
     """Process mypy line and return Result object or None if parse error."""
     if match := report_re.fullmatch(line.rstrip()):
-        filename, st_line, st_col, end_line, end_col, kind, message = match.groups()
+        filename, st_line, st_col, end_line, end_col, kind, message = (
+            match.groups()
+        )
         return Result(
             filename=filename,
             start_line=int(st_line),
