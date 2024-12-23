@@ -23,7 +23,7 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.1
+    rev: v0.8.4
     hooks:
       - id: ruff
         types: [file]
@@ -39,16 +39,22 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.28.4
+    hooks:
+      - id: typos
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v0.9.2
+    hooks:
+      - id: zizmor
   - repo: local
     hooks:
       - id: project-requirements
         name: regenerate requirements.in
-        language: system
-        entry: python tools/project_requirements.py
+        language: python
+        entry: tools/project_requirements.py
         pass_filenames: false
         files: ^(test-requirements.in)|(pyproject.toml)$
-  - repo: local
-    hooks:
       - id: regenerate-files
         name: regenerate generated files
         language: system

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Generate pages for the sane scanner web server.
 
 Copyright (C) 2022-2024  CoolCat467

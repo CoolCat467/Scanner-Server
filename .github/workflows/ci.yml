@@ -78,6 +78,8 @@ jobs:
       }}
     steps:
       - name: Checkout
+        with:
+          persist-credentials: false
         uses: actions/checkout@v4
       - name: Setup python
         uses: actions/setup-python@v5
