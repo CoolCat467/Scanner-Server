@@ -93,7 +93,6 @@ logger.set_title(__title__)
 
 SANE_INITIALIZED = False
 
-Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
 T = TypeVar("T")
 
 
