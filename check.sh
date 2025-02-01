@@ -79,15 +79,15 @@ fi
 
 # Check pip compile is consistent
 echo "::group::Pip Compile - Tests"
-uv pip compile --universal --python-version=3.9 test-requirements.in -o test-requirements.txt
+uv lock
 echo "::endgroup::"
 
-if git status --porcelain | grep -q "requirements.txt"; then
-    echo "::error::requirements.txt changed."
-    echo "::group::requirements.txt changed"
-    echo "* requirements.txt changed" >> "$GITHUB_STEP_SUMMARY"
+if git status --porcelain | grep -q "uv.lock"; then
+    echo "::error::uv.lock changed."
+    echo "::group::uv.lock changed"
+    echo "* uv.lock changed" >> "$GITHUB_STEP_SUMMARY"
     git status --porcelain
-    git --no-pager diff --color ./*requirements.txt
+    git --no-pager diff --color ./*uv.lock
     EXIT_STATUS=1
     echo "::endgroup::"
 fi
@@ -103,9 +103,10 @@ if [ $EXIT_STATUS -ne 0 ]; then
 Problems were found by static analysis (listed above).
 To fix formatting and see remaining errors, run
 
-    uv pip install -r test-requirements.txt
+    uv sync --extra tools
     black src/$PROJECT
     ruff check src/$PROJECT
+    mypy
     ./check.sh
 
 in your local checkout.
