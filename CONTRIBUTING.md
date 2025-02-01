@@ -121,9 +121,11 @@ We use [pytest](https://pytest.org/) for testing. To run the tests
 locally, you should run:
 
 ```shell
-cd path/to/repo/checkout/
-pip install -r ../checkout  # possibly using a virtualenv
-pytest src
+cd path/to/repo/checkout
+python -m venv venv
+source venv/bin/activate
+pip install -r test-requirements.txt  # installs e.g. pytest
+pytest
 ```
 
 This doesn't try to be completely exhaustive – it only checks that
