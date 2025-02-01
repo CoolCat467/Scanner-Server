@@ -122,7 +122,8 @@ should run:
 
 ```shell
 cd path/to/repo/checkout
-uv sync
+python -m pip install uv  # only need to to this first time
+uv sync --extra tools --extra tests  # first time & after dependency updates
 source .venv/bin/activate
 pytest
 ```
@@ -177,7 +178,15 @@ to fix it up. (And don't worry if you forget – when you submit a pull request
 then we'll automatically check and remind you.) Hopefully this will let you
 focus on more important style issues like choosing good names, writing useful
 comments, and making sure your docstrings are nicely formatted. (black doesn't
-reformat comments or docstrings.)
+reformat comments or docstrings.) In some cases, especially when you change
+or update the pre-commit hooks, you may need to run
+
+```shell
+pre-commit run --all
+```
+
+to run the pre-commit hooks on all files, not just the ones that have
+been changed.
 
 If you would like, you can even have pre-commit run before you commit by
 running:
@@ -186,8 +195,8 @@ running:
 pre-commit install
 ```
 
-and now pre-commit will run before git commits. You can uninstall the
-pre-commit hook at any time by running:
+and now pre-commit will run automatically before git commits. You can
+uninstall the pre-commit hook at any time by running:
 
 ```shell
 pre-commit uninstall
