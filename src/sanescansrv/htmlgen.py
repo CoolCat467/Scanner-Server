@@ -243,7 +243,12 @@ def input_field(
                 )
     lines.append(tag("input", **args))
     if field_title is not None:
-        lines.append(wrap_tag("label", field_title, False, for_=field_id))
+        kwargs = {
+            "for_": field_id,
+        }
+        if "hidden" in args:
+            kwargs["hidden_"] = args["hidden"]
+        lines.append(wrap_tag("label", field_title, False, **kwargs))
     # If label should be before, reverse.
     if field_type in {"number"}:
         return "\n".join(reversed(lines))
@@ -252,17 +257,26 @@ def input_field(
 
 def select_dict(
     submit_name: str,
-    options: Mapping[str, str | Mapping[str, TagArg]],
-    default: str | None = None,
+    inputs: Mapping[str, str | Mapping[str, TagArg]],
+    default: str | bool | None = None,
 ) -> str:
     """Create radio select from dictionary.
 
-    Options is a mapping of display text to submit as
-    field values and or field types.
+    inputs is a mapping of display text to submit as
+    field values and or field types for the html input.
     """
     lines = []
-    for count, (display, value_data) in enumerate(options.items()):
-        if isinstance(value_data, str):
+
+    for count, (display, value_data) in enumerate(inputs.items()):
+        if isinstance(value_data, bool):
+            field_type = "checkbox"
+            attributes = {
+                "value": value_data,
+                "onchange": f"toggleCheckbox('{submit_name}_{(count + 1) % 2}', this)",
+            }
+            if not value_data:
+                attributes["hidden"] = "true"
+        elif isinstance(value_data, str):
             # If just field value, default to radio
             field_type = "radio"
             attributes = {
@@ -273,7 +287,7 @@ def select_dict(
             attributes = dict(value_data)  # type: ignore[arg-type]
             field_type = attributes.pop("type", "radio")
         if (
-            field_type == "radio"
+            field_type in {"radio", "checkbox"}
             and "value" in attributes
             and attributes["value"] == default
         ):
@@ -287,13 +301,14 @@ def select_dict(
                 attrs=attributes,
             ),
         )
-        lines.append("<br>")
+        if "hidden" not in attributes:
+            lines.append("<br>")
     return "\n".join(lines)
 
 
 def select_box(
     submit_name: str,
-    options: Mapping[str, str | Mapping[str, TagArg]],
+    inputs: Mapping[str, str | Mapping[str, TagArg]],
     default: str | None = None,
     box_title: str | None = None,
 ) -> str:
@@ -301,7 +316,7 @@ def select_box(
 
     See `select_dict` for more information on arguments
     """
-    radios = select_dict(submit_name, options, default)
+    radios = select_dict(submit_name, inputs, default)
     return contain_in_box("<br>\n" + radios, box_title)
 
 
