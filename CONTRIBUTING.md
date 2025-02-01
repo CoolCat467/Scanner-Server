@@ -153,11 +153,7 @@ Some rules for writing good tests:
 * For cases where real testing isn't relevant or sufficient, then we strongly
   prefer fakes or stubs over mocks. Useful articles:
 
-  * [Test Doubles - Fakes, Mocks and Stubs](https://dev.to/milipski/test-doubles---fakes-mocks-and-stubs)
-
   * [Mocks aren't stubs](https://martinfowler.com/articles/mocksArentStubs.html)
-
-  * [Write test doubles you can trust using verified fakes](https://codewithoutrules.com/2016/07/31/verified-fakes/)
 
 Writing reliable tests for obscure corner cases is often harder than
 implementing a feature in the first place, but stick with it: it's worth it!
