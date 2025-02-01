@@ -122,9 +122,8 @@ should run:
 
 ```shell
 cd path/to/repo/checkout
-python -m venv venv
-source venv/bin/activate
-pip install -r test-requirements.txt  # installs e.g. pytest
+uv sync
+source .venv/bin/activate
 pytest
 ```
 
