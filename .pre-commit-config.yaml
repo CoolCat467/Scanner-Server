@@ -49,12 +49,6 @@ repos:
       - id: zizmor
   - repo: local
     hooks:
-      - id: project-requirements
-        name: regenerate requirements.in
-        language: python
-        entry: tools/project_requirements.py
-        pass_filenames: false
-        files: ^(test-requirements.in)|(pyproject.toml)$
       - id: regenerate-files
         name: regenerate generated files
         language: system

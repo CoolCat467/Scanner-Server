@@ -53,34 +53,40 @@ version = {attr = "sanescansrv.server.__version__"}
 [project.scripts]
 sanescansrv = "sanescansrv:run"
 
+[project.optional-dependencies]
+tests = [
+    "pytest>=5.0",
+    "pytest-cov",
+    "pytest-trio",
+    "coverage>=7.2.5",
+    "uv>=0.5.21",
+    "mypy>=1.14.1",
+]
+tools = [
+    'black>=24.10.0; implementation_name == "cpython"',
+    "ruff>=0.9.2",
+    "codespell>=2.3.0",
+]
+
 [tool.setuptools.package-data]
 sanescansrv = ["py.typed", "templates/*", "static/*"]
 
+[tool.uv]
+package = true
+
 [tool.mypy]
-files = ["src/sanescansrv/",]
+files = ["src/sanescansrv/", "tests"]
 check_untyped_defs = true
-disallow_any_decorated = true
-disallow_any_generics = true
-disallow_any_unimported = true
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
-ignore_missing_imports = true
-local_partial_types = true
-no_implicit_optional = true
-no_implicit_reexport = true
 show_column_numbers = true
 show_error_codes = true
 show_traceback = true
+disallow_any_decorated = true
+disallow_any_unimported = true
+ignore_missing_imports = true
+local_partial_types = true
+no_implicit_optional = true
 strict = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
 warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -165,6 +171,9 @@ omit = [
     "__init__.py",
     "generate_pages.py",
 ]
+parallel = true
+relative_files = true
+source = ["."]
 
 [tool.coverage.report]
 precision = 1
