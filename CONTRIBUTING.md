@@ -128,6 +128,10 @@ source .venv/bin/activate
 pytest
 ```
 
+The above command requires [uv](https://github.com/astral-sh/uv). Installation
+is described in the project
+[documentation](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer).
+
 This doesn't try to be completely exhaustive – it only checks that things work
 on your machine. But it's a good way to quickly check that things seem to be
 working, and we'll automatically run the full test suite when your PR is
