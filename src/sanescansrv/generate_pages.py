@@ -260,23 +260,73 @@ def generate_error_page() -> str:
     )
 
 
+def generate_scanners() -> str:
+    """Generate radio items for scan devices."""
+    default = "default"
+    link = htmlgen.create_link("/update_scanners", "Update Devices")
+    count = htmlgen.jinja_expression("loop.index0")
+    cid = f"scanner_{count}"
+    args = {
+        "type": "radio",
+        "id": cid,
+        "name": "scanner",
+        "value": htmlgen.jinja_expression("scanner.device_name"),
+    }
+    jinja_properties: tuple[str, ...] = ()
+    default_tag = " ".join(
+        htmlgen._generate_html_attributes({"checked": "checked"}),
+    )
+    jinja_properties = (
+        htmlgen.jinja_if_block(
+            {f"scanner.device_name == {default}": default_tag},
+            block=False,
+        ),
+        htmlgen.jinja_if_block(
+            {"not scanner.active": "disabled"},
+            block=False,
+        ),
+    )
+
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
+    return htmlgen.jinja_for_loop(
+        ("scanner",),
+        "scanners",
+        "\n".join(
+            (
+                htmlgen.jinja_arg_tag("input", jinja_properties, **args),
+                htmlgen.wrap_tag(
+                    "label",
+                    " ".join(
+                        [
+                            htmlgen.jinja_expression("scanner.vendor"),
+                            htmlgen.jinja_expression("scanner.model"),
+                            f"({scanner_type_italics})",
+                        ],
+                    ),
+                    False,
+                    **{"for": cid},
+                ),
+                htmlgen.tag("br"),
+            ),
+        ),
+        else_content=htmlgen.select_dict(
+            "scanner",
+            {f"None - {link}": "none"},
+            "none",
+        ),
+    )
+
+
 @save_template_as("root_get")
 def generate_root_get() -> str:
     """Generate / (root) GET page."""
-    link = htmlgen.create_link("/update_scanners", "Update Devices")
-
     scanner_select = htmlgen.contain_in_box(
-        htmlgen.jinja_radio_select(
-            "scanner",
-            "scanners",
-            "default",
-            # htmlgen.jinja_statement('default'),
-            htmlgen.select_dict(
-                "scanner",
-                {f"None - {link}": "none"},
-                "none",
-            ),
-        ),
+        generate_scanners(),
         "Select a Scanner:",
     )
 
@@ -325,12 +375,36 @@ def generate_root_get() -> str:
 @save_template_as("scanners_get")
 def generate_scanners_get() -> str:
     """Generate /scanners GET page."""
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
+    scanner = " ".join(
+        [
+            htmlgen.jinja_expression("scanner.vendor"),
+            htmlgen.jinja_expression("scanner.model"),
+            f"({scanner_type_italics})",
+        ],
+    )
+
     scanners = htmlgen.jinja_bullet_list(
-        ("link", "disp"),
-        "scanners.items()",
-        htmlgen.create_link(
-            htmlgen.jinja_expression("link"),
-            htmlgen.jinja_expression("disp"),
+        ("scanner",),
+        "scanners",
+        htmlgen.jinja_if_block(
+            {
+                "scanner.active": htmlgen.create_link(
+                    "".join(
+                        [
+                            "/settings?",
+                            htmlgen.jinja_expression("scanner.url"),
+                        ],
+                    ),
+                    scanner,
+                ),
+                "": scanner,
+            },
         ),
         else_content=htmlgen.wrap_tag(
             "p",

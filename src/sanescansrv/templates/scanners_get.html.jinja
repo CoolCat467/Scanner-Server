@@ -13,8 +13,12 @@
         <span>Devices:</span>
         <br>
         <ul>
-          {% for link, disp in scanners.items() %}
-          <li><a href="{{ link }}">{{ disp }}</a></li>
+          {% for scanner in scanners %}
+          <li>{% if scanner.active %}
+          <a href="/settings?{{ scanner.url }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</a>
+          {% else %}
+          {{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)
+          {% endif %}</li>
           {% else %}
           <p>There were no devices detected. Are your device(s) turned on?</p>
           {% endfor %}

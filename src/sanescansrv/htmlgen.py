@@ -106,6 +106,8 @@ def _generate_html_attributes(
     """Remove trailing underscores for arguments."""
     for name, value in args.items():
         key = _key_to_html_property(name)
+        if isinstance(value, bool):
+            value = str(value).lower()
         yield f'{key}="{value}"'
 
 
@@ -243,7 +245,10 @@ def input_field(
                 )
     lines.append(tag("input", **args))
     if field_title is not None:
-        lines.append(wrap_tag("label", field_title, False, for_=field_id))
+        kwargs: dict[str, TagArg] = {
+            "for_": field_id,
+        }
+        lines.append(wrap_tag("label", field_title, False, **kwargs))
     # If label should be before, reverse.
     if field_type in {"number"}:
         return "\n".join(reversed(lines))
@@ -252,17 +257,24 @@ def input_field(
 
 def select_dict(
     submit_name: str,
-    options: Mapping[str, str | Mapping[str, TagArg]],
-    default: str | None = None,
+    options: Mapping[str, str | bool | Mapping[str, TagArg]],
+    default: str | bool | None = None,
 ) -> str:
     """Create radio select from dictionary.
 
-    Options is a mapping of display text to submit as
-    field values and or field types.
+    options is a mapping of display text to submit as
+    field values and or field types for the html input.
     """
     lines = []
+
     for count, (display, value_data) in enumerate(options.items()):
-        if isinstance(value_data, str):
+        attributes: Mapping[str, TagArg]
+        if isinstance(value_data, bool):
+            field_type = "checkbox"
+            attributes = {
+                "value": value_data,
+            }
+        elif isinstance(value_data, str):
             # If just field value, default to radio
             field_type = "radio"
             attributes = {
@@ -270,10 +282,12 @@ def select_dict(
             }
         else:
             # Otherwise user can define field type.
-            attributes = dict(value_data)  # type: ignore[arg-type]
-            field_type = attributes.pop("type", "radio")
+            attributes = dict(value_data)
+            raw_field_type = attributes.pop("type", "radio")
+            assert isinstance(raw_field_type, str)
+            field_type = raw_field_type
         if (
-            field_type == "radio"
+            field_type in {"radio", "checkbox"}
             and "value" in attributes
             and attributes["value"] == default
         ):
@@ -293,8 +307,8 @@ def select_dict(
 
 def select_box(
     submit_name: str,
-    options: Mapping[str, str | Mapping[str, TagArg]],
-    default: str | None = None,
+    options: Mapping[str, str | bool | Mapping[str, TagArg]],
+    default: str | bool | None = None,
     box_title: str | None = None,
 ) -> str:
     """Create radio select value box from dictionary and optional names.
@@ -454,7 +468,7 @@ def jinja_arg_tag(
     **kwargs: TagArg,
 ) -> str:
     """Return HTML tag. Removes trailing underscore from argument names."""
-    args = " ".join(jinja_properties)
+    args = "".join(jinja_properties)
     if args:
         args = f" {args}"
     if kwargs:
