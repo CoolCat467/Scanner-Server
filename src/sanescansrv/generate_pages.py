@@ -2,7 +2,7 @@
 
 """Generate pages for the sane scanner web server.
 
-Copyright (C) 2022-2024  CoolCat467
+Copyright (C) 2022-2025  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@ from sanescansrv import htmlgen, server
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-SOURCE_ROOT: Final = Path.cwd()
-CORE: Final = SOURCE_ROOT / "src" / "sanescansrv"
+CORE: Final = Path(__file__).absolute().parent
+SOURCE_ROOT: Final = CORE.parent.parent
 
 TEMPLATE_FOLDER: Final = CORE / "templates"
 TEMPLATE_FUNCTIONS: dict[Path, Callable[[], str]] = {}
