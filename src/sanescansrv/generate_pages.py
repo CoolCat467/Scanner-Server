@@ -271,7 +271,6 @@ def generate_scanners() -> str:
         "id": cid,
         "name": "scanner",
         "value": htmlgen.jinja_expression("scanner.device_name"),
-        "title": htmlgen.jinja_expression("scanner.device_name"),
     }
     jinja_properties: tuple[str, ...] = ()
     default_tag = " ".join(
@@ -287,6 +286,13 @@ def generate_scanners() -> str:
             block=False,
         ),
     )
+
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
     return htmlgen.jinja_for_loop(
         ("scanner",),
         "scanners",
@@ -298,8 +304,8 @@ def generate_scanners() -> str:
                     " ".join(
                         [
                             htmlgen.jinja_expression("scanner.vendor"),
-                            htmlgen.jinja_expression("scanner.mode"),
-                            htmlgen.jinja_expression("scanner.type"),
+                            htmlgen.jinja_expression("scanner.model"),
+                            f"({scanner_type_italics})",
                         ],
                     ),
                     False,
@@ -369,19 +375,17 @@ def generate_root_get() -> str:
 @save_template_as("scanners_get")
 def generate_scanners_get() -> str:
     """Generate /scanners GET page."""
-    scanner = "".join(
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
+    scanner = " ".join(
         [
             htmlgen.jinja_expression("scanner.vendor"),
-            " ",
-            htmlgen.jinja_expression("scanner.mode"),
-            " ",
-            "(",
-            htmlgen.wrap_tag(
-                "i",
-                htmlgen.jinja_expression("scanner.type"),
-                block=False,
-            ),
-            ")",
+            htmlgen.jinja_expression("scanner.model"),
+            f"({scanner_type_italics})",
         ],
     )
 
@@ -432,10 +436,6 @@ def generate_scanners_get() -> str:
 def generate_settings_get() -> str:
     """Generate /settings GET page."""
     scanner = htmlgen.jinja_expression("scanner")
-    head = htmlgen.wrap_tag(
-        "script",
-        "function toggleCheckbox(targetId, source) {document.getElementById(targetId).checked = !source.checked;}",
-    )
     contents = htmlgen.jinja_if_block(
         {
             "radios": htmlgen.form(
@@ -473,7 +473,7 @@ def generate_settings_get() -> str:
             ),
         ),
     )
-    return template(scanner, html, head=head)
+    return template(scanner, html)
 
 
 @save_template_as("scan-status_get")

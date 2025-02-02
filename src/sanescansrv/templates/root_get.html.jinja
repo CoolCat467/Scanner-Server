@@ -32,8 +32,8 @@
           <span>Select a Scanner:</span>
           <br>
           {% for scanner in scanners %}
-          <input {% if scanner.device_name == default %}checked="checked"{% endif %}{% if not scanner.active %}disabled{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ scanner.device_name }}" title="{{ scanner.device_name }}">
-          <label for="scanner_{{ loop.index0 }}">{{ scanner.vendor }} {{ scanner.mode }} {{ scanner.type }}</label>
+          <input {% if scanner.device_name == default %}checked="checked"{% endif %}{% if not scanner.active %}disabled{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ scanner.device_name }}">
+          <label for="scanner_{{ loop.index0 }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</label>
           <br>
           {% else %}
           <input type="radio" id="scanner_0" name="scanner" value="none" checked="checked">

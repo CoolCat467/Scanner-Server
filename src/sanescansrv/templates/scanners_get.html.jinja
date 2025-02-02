@@ -15,9 +15,9 @@
         <ul>
           {% for scanner in scanners %}
           <li>{% if scanner.active %}
-          <a href="/settings?{{ scanner.url }}">{{ scanner.vendor }} {{ scanner.mode }} (<i>{{ scanner.type }}</i>)</a>
+          <a href="/settings?{{ scanner.url }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</a>
           {% else %}
-          {{ scanner.vendor }} {{ scanner.mode }} (<i>{{ scanner.type }}</i>)
+          {{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)
           {% endif %}</li>
           {% else %}
           <p>There were no devices detected. Are your device(s) turned on?</p>

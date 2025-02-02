@@ -250,7 +250,7 @@ class DeviceOptionsGroup:
     """A group of scanner options."""
 
     name: None | str
-    title: None | str = field(repr=False)
+    title: None | str
 
 
 if TYPE_CHECKING:
@@ -308,39 +308,14 @@ UNIT_CONVERSION: Final = {
 
 def convert_type(
     sane_type: TypeEnum,
-    value: str | int | float | Callable[PS, str | int | float | bool] | None,
-) -> str | int | float | bool | Callable[PS, str | int | float | bool] | None:
-    """Convert the sane attribute value according to its type representation.
-
-    Note: This function supports callables as input
-    """
+    value: str | int | float | bool | None,
+) -> str | int | float | bool | None:
+    """Convert the sane attribute value according to its type representation."""
     if value is None:
         return None
 
-    def type_cast(
-        obj: str | int | float | Callable[PS, str | int | float | bool | None],
-        cast_type: type[str | int | float | bool],
-    ) -> (
-        str
-        | int
-        | float
-        | bool
-        | Callable[PS, str | int | float | bool | None]
-    ):
-        if not callable(obj):
-            return cast_type(value)
-
-        @functools.wraps(obj)
-        def wrapper(
-            *args: PS.args,
-            **kwargs: PS.kwargs,
-        ) -> str | int | float | bool:
-            return cast_type(obj(*args, **kwargs))
-
-        return wrapper
-
-    # check constraint here!
-    return type_cast(value, TYPE_CONVERSION[sane_type])
+    convert: type[str | int | float | bool] = TYPE_CONVERSION[sane_type]
+    return convert(value)
 
 
 @dataclass
@@ -361,14 +336,7 @@ class DeviceOptionDataClass:
     py_name: str = field(repr=False)
     active: bool
     settable: bool
-    default: (
-        None
-        | str
-        | int
-        | float
-        | bool
-        | Callable[..., str | int | float | bool]
-    ) = field(
+    default: None | str | int | float | bool = field(
         init=False,
         default=None,
     )
@@ -388,31 +356,13 @@ class DeviceOptionDataClass:
 class DeviceOption(DeviceOptionDataClass):
     """A scanner option."""
 
-    _unit: UnitEnum | None = None
     _default: str | int | float | bool | None = None
     _value: str | int | float | bool | None = None
 
     @property
-    def unit(self) -> str:
-        """Human readable unit for this option."""
-        assert self._unit is not None
-        return UNIT_CONVERSION[self._unit]
-
-    @unit.setter
-    def unit(self, value: UnitEnum) -> None:
-        self._unit = value
-
-    @property
     def default(
         self,
-    ) -> (
-        None
-        | str
-        | int
-        | float
-        | bool
-        | Callable[..., str | int | float | bool]
-    ):
+    ) -> str | int | float | bool | None:
         """Default value of this option."""
         return self._default
 
@@ -423,14 +373,7 @@ class DeviceOption(DeviceOptionDataClass):
     @property
     def value(
         self,
-    ) -> (
-        None
-        | str
-        | int
-        | float
-        | bool
-        | Callable[..., str | int | float | bool]
-    ):
+    ) -> str | int | float | bool | None:
         """Current value of this option."""
         if self._value is None:
             return self.default
@@ -479,14 +422,14 @@ def get_device_settings(device_addr: str) -> list[DeviceOption]:
 class Device:
     """A scanner (SANE mapping) Device."""
 
-    device_name: str
     """The device name, suitable for passing to sane.open()"""
-    vendor: str
+    device_name: str
     """The device vendor."""
-    mode: str
+    vendor: str
     """The device model vendor."""
-    type: str
-    """the device type, such as "virtual device" or "video camera"."""
+    model: str
+    """The device type, such as "virtual device" or "video camera"."""
+    type_: str
     options: list[DeviceOption] = field(
         init=False,
         default_factory=list,
@@ -767,7 +710,7 @@ async def root_post() -> (
     if img_format not in {"pnm", "tiff", "png", "jpeg"}:
         return app.redirect("/")
 
-    if (device := get_scanner(data.get("scanner"))) is None:
+    if (device := get_scanner(data.get("scanner", "none"))) is None:
         return app.redirect("/scanners")
 
     raw_status = APP_STORAGE.get("scan_status")
@@ -837,12 +780,13 @@ def get_setting_radio(option: DeviceOption) -> str | None:
 
     default = option.value
     inputs: Mapping[str, str | bool | dict[str, str]] = {}
+    pass_default: str | bool | None = (
+        str(default) if default is not None else None
+    )
 
     if option.type == TypeEnum.TYPE_BOOL:
-        inputs = {
-            option.name: True,
-            "hidden": False,
-        }  # include hidden field
+        inputs = {option.name.title(): True}
+        pass_default = bool(default)
     elif option.type == TypeEnum.TYPE_STRING and option.constraint is not None:
         inputs = {f"{x}".title(): f"{x}" for x in option.constraint}
     elif option.type in {TypeEnum.TYPE_INT, TypeEnum.TYPE_FIXED}:
@@ -878,7 +822,9 @@ def get_setting_radio(option: DeviceOption) -> str | None:
                 extra += ", w/ decimal support"
             if option.type == TypeEnum.TYPE_FIXED and min_ == -1:
                 extra += " (-1 means autocalibration)"
-            inputs = {f"Value ({extra} [{option.unit}])": attributes}
+            unit = UNIT_CONVERSION[option.unit]
+            unit_data = f" [{unit}]" if unit else ""
+            inputs = {f"Value ({extra}{unit_data})": attributes}
     else:
         return None
     ##else:
@@ -909,6 +855,7 @@ def get_setting_radio(option: DeviceOption) -> str | None:
     if len(inputs) == 1 and option.type not in {
         TypeEnum.TYPE_INT,
         TypeEnum.TYPE_FIXED,
+        TypeEnum.TYPE_BOOL,
     }:
         return None
 
@@ -929,20 +876,22 @@ def get_setting_radio(option: DeviceOption) -> str | None:
 
     return htmlgen.select_box(
         submit_name=option.name,
-        inputs=inputs,
-        default=str(default) if default is not None else None,
+        options=inputs,
+        default=pass_default,
         box_title=box_title,
     )
 
 
 def get_scanner(scanner: str) -> Device | None:
     """Get scanner device from globally stored devices."""
-    devices = APP_STORAGE.get("scanners", [])
+    devices: list[Device] = APP_STORAGE.get("scanners", [])
     scanners = [device.device_name for device in devices]
     if scanner not in scanners:
         return None
     idx = scanners.index(scanner)
-    return devices[idx]
+    item = devices[idx]
+    assert isinstance(item, Device)
+    return item
 
 
 @app.get("/settings")  # type: ignore[type-var]
@@ -955,7 +904,7 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
 
     return await stream_template(
         "settings_get.html.jinja",
-        scanner=scanner,
+        scanner=device.model,
         radios="\n".join(filter(None, map(get_setting_radio, device.options))),
     )
 
@@ -978,6 +927,17 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     if data.get("settings_update_submit_button"):
         data.pop("settings_update_submit_button")
 
+    # Web browsers don't send unchecked items
+    for option in device.options:
+        if (
+            option.type == TypeEnum.TYPE_BOOL
+            and option.settable
+            and option.active
+            and option.value
+            and option.name not in data
+        ):
+            data[option.name] = "false"
+
     errors: list[str] = []
 
     for setting_name, new_value in data.items():
@@ -986,11 +946,13 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
             errors.append(f"{setting_name} not valid")
             continue
         idx = valid_settings[setting_name]
-        if not device.options[idx].settable:
+        option = device.options[idx]
+        if not option.settable:
             errors.append(f"{setting_name} not settable")
             continue
-        options = device.options[idx]
-        constraint = options.constraint
+        if option.type == TypeEnum.TYPE_BOOL:
+            new_value = new_value.title()
+        constraint = option.constraint
         if isinstance(constraint, list):
             valid_options = list(map(str, constraint))
             try:
@@ -1015,7 +977,7 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
             if step and as_float % step != 0:
                 errors.append(f"{setting_name}[{new_value}] bad step multiple")
                 continue
-        options.value = new_value
+        option.value = new_value
 
     if errors:
         errors.insert(
