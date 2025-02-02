@@ -42,7 +42,7 @@ from collections.abc import (
     Mapping,
 )
 from dataclasses import dataclass, field
-from enum import Enum, IntEnum, auto
+from enum import IntEnum, auto
 from os import getenv, makedirs, path
 from pathlib import Path
 from shutil import rmtree
@@ -253,22 +253,49 @@ class DeviceOptionsGroup:
     title: None | str = field(repr=False)
 
 
-TypeEnum = Enum(
-    "TypeEnum",
-    {name: index for index, name in sane.TYPE_STR.items()},
-)
-TYPE_CONVERSION = {
+if TYPE_CHECKING:
+
+    class TypeEnum(IntEnum):
+        """Type Enum."""
+
+        TYPE_BOOL = 0
+        TYPE_INT = auto()
+        TYPE_FIXED = auto()
+        TYPE_STRING = auto()
+        TYPE_BUTTON = auto()
+        TYPE_GROUP = auto()
+
+    class UnitEnum(IntEnum):
+        """Unit Enum."""
+
+        UNIT_NONE = 0
+        UNIT_PIXEL = auto()
+        UNIT_BIT = auto()
+        UNIT_MM = auto()
+        UNIT_DPI = auto()
+        UNIT_PERCENT = auto()
+        UNIT_MICROSECOND = auto()
+
+else:
+    TypeEnum = IntEnum(
+        "TypeEnum",
+        {name: index for index, name in sane.TYPE_STR.items()},
+    )
+    UnitEnum = IntEnum(
+        "UnitEnum",
+        {name: index for index, name in sane.UNIT_STR.items()},
+    )
+
+
+TYPE_CONVERSION: Final = {
     TypeEnum.TYPE_BOOL: bool,
     TypeEnum.TYPE_INT: int,
     TypeEnum.TYPE_FIXED: float,
     TypeEnum.TYPE_STRING: str,
 }
 
-UnitEnum = Enum(
-    "UnitEnum",
-    {name: index for index, name in sane.UNIT_STR.items()},
-)
-UNIT_CONVERSION = {
+
+UNIT_CONVERSION: Final = {
     UnitEnum.UNIT_NONE: "",
     UnitEnum.UNIT_PIXEL: "px",
     UnitEnum.UNIT_BIT: "bit",
@@ -281,8 +308,8 @@ UNIT_CONVERSION = {
 
 def convert_type(
     sane_type: TypeEnum,
-    value: None | str | int | float | Callable,
-):
+    value: str | int | float | Callable[PS, str | int | float | bool] | None,
+) -> str | int | float | bool | Callable[PS, str | int | float | bool] | None:
     """Convert the sane attribute value according to its type representation.
 
     Note: This function supports callables as input
@@ -290,12 +317,24 @@ def convert_type(
     if value is None:
         return None
 
-    def type_cast(obj, cast_type):
+    def type_cast(
+        obj: str | int | float | Callable[PS, str | int | float | bool | None],
+        cast_type: type[str | int | float | bool],
+    ) -> (
+        str
+        | int
+        | float
+        | bool
+        | Callable[PS, str | int | float | bool | None]
+    ):
         if not callable(obj):
             return cast_type(value)
 
         @functools.wraps(obj)
-        def wrapper(*args, **kwargs):
+        def wrapper(
+            *args: PS.args,
+            **kwargs: PS.kwargs,
+        ) -> str | int | float | bool:
             return cast_type(obj(*args, **kwargs))
 
         return wrapper
@@ -315,14 +354,21 @@ class DeviceOptionDataClass:
     type: TypeEnum
     unit: UnitEnum
     constraint: (
-        None
-        | list[str | int | bool]
+        list[str | int | bool]
         | tuple[int | float, int | float, int | float]
+        | None
     )
     py_name: str = field(repr=False)
     active: bool
     settable: bool
-    default: None | str | int | float | Callable = field(
+    default: (
+        None
+        | str
+        | int
+        | float
+        | bool
+        | Callable[..., str | int | float | bool]
+    ) = field(
         init=False,
         default=None,
     )
@@ -331,7 +377,7 @@ class DeviceOptionDataClass:
         default=None,
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Assure default types in dataclass."""
         if self.type == TypeEnum.TYPE_BOOL:
             self.constraint = [True, False]
@@ -342,37 +388,56 @@ class DeviceOptionDataClass:
 class DeviceOption(DeviceOptionDataClass):
     """A scanner option."""
 
-    _unit = None
-    _default = None
-    _value = None
+    _unit: UnitEnum | None = None
+    _default: str | int | float | bool | None = None
+    _value: str | int | float | bool | None = None
 
     @property
     def unit(self) -> str:
         """Human readable unit for this option."""
+        assert self._unit is not None
         return UNIT_CONVERSION[self._unit]
 
     @unit.setter
-    def unit(self, value: UnitEnum):
+    def unit(self, value: UnitEnum) -> None:
         self._unit = value
 
     @property
-    def default(self) -> None | str | int | float | Callable:
+    def default(
+        self,
+    ) -> (
+        None
+        | str
+        | int
+        | float
+        | bool
+        | Callable[..., str | int | float | bool]
+    ):
         """Default value of this option."""
         return self._default
 
     @default.setter
-    def default(self, value):
+    def default(self, value: str | int | float | bool | None) -> None:
         self._default = convert_type(self.type, value)
 
     @property
-    def value(self) -> None | str | int | float | Callable:
+    def value(
+        self,
+    ) -> (
+        None
+        | str
+        | int
+        | float
+        | bool
+        | Callable[..., str | int | float | bool]
+    ):
         """Current value of this option."""
         if self._value is None:
             return self.default
         return self._value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: str | int | float | bool) -> None:
         if not self.settable:
             raise ValueError(f"Attribute {self.name} is not settable")
         self._value = convert_type(self.type, value)
@@ -430,7 +495,7 @@ class Device:
     active: bool = field(init=False, default=True)
 
     @property
-    def url(self):
+    def url(self) -> str:
         """Return a urlencoded name of the device."""
         return urlencode({"scanner": self.device_name})
 
@@ -771,7 +836,7 @@ def get_setting_radio(option: DeviceOption) -> str | None:
     box_title = f"{option.title} - {option.desc}"
 
     default = option.value
-    inputs: Mapping[str, str | dict[str, str]] = {}
+    inputs: Mapping[str, str | bool | dict[str, str]] = {}
 
     if option.type == TypeEnum.TYPE_BOOL:
         inputs = {
@@ -865,12 +930,12 @@ def get_setting_radio(option: DeviceOption) -> str | None:
     return htmlgen.select_box(
         submit_name=option.name,
         inputs=inputs,
-        default=default,
+        default=str(default) if default is not None else None,
         box_title=box_title,
     )
 
 
-def get_scanner(scanner):
+def get_scanner(scanner: str) -> Device | None:
     """Get scanner device from globally stored devices."""
     devices = APP_STORAGE.get("scanners", [])
     scanners = [device.device_name for device in devices]

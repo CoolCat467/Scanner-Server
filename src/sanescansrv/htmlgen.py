@@ -106,6 +106,8 @@ def _generate_html_attributes(
     """Remove trailing underscores for arguments."""
     for name, value in args.items():
         key = _key_to_html_property(name)
+        if isinstance(value, bool):
+            value = str(value).lower()
         yield f'{key}="{value}"'
 
 
@@ -243,7 +245,7 @@ def input_field(
                 )
     lines.append(tag("input", **args))
     if field_title is not None:
-        kwargs = {
+        kwargs: dict[str, TagArg] = {
             "for_": field_id,
         }
         if "hidden" in args:
@@ -257,7 +259,7 @@ def input_field(
 
 def select_dict(
     submit_name: str,
-    inputs: Mapping[str, str | Mapping[str, TagArg]],
+    inputs: Mapping[str, str | bool | Mapping[str, TagArg]],
     default: str | bool | None = None,
 ) -> str:
     """Create radio select from dictionary.
@@ -268,6 +270,7 @@ def select_dict(
     lines = []
 
     for count, (display, value_data) in enumerate(inputs.items()):
+        attributes: Mapping[str, TagArg]
         if isinstance(value_data, bool):
             field_type = "checkbox"
             attributes = {
@@ -284,8 +287,10 @@ def select_dict(
             }
         else:
             # Otherwise user can define field type.
-            attributes = dict(value_data)  # type: ignore[arg-type]
-            field_type = attributes.pop("type", "radio")
+            attributes = dict(value_data)
+            raw_field_type = attributes.pop("type", "radio")
+            assert isinstance(raw_field_type, str)
+            field_type = raw_field_type
         if (
             field_type in {"radio", "checkbox"}
             and "value" in attributes
@@ -469,7 +474,7 @@ def jinja_arg_tag(
     **kwargs: TagArg,
 ) -> str:
     """Return HTML tag. Removes trailing underscore from argument names."""
-    args = " ".join(jinja_properties)
+    args = "".join(jinja_properties)
     if args:
         args = f" {args}"
     if kwargs:

@@ -260,7 +260,7 @@ def generate_error_page() -> str:
     )
 
 
-def generate_scanners():
+def generate_scanners() -> str:
     """Generate radio items for scan devices."""
     default = "default"
     link = htmlgen.create_link("/update_scanners", "Update Devices")
