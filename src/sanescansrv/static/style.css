@@ -54,7 +54,7 @@ code {
 #noticeText {
   font-size: 10px;
   display: inline-block;
-  white-space: normal;
+  white-space: nowrap;
 }
 input[type="submit"] {
   border: 1.5px solid black;

@@ -35,12 +35,12 @@ from sanescansrv import htmlgen, server
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-CORE: Final = Path(__file__).absolute().parent
-SOURCE_ROOT: Final = CORE.parent.parent
+MODULE: Final = Path(__file__).absolute().parent
+SOURCE_ROOT: Final = MODULE.parent.parent
 
-TEMPLATE_FOLDER: Final = CORE / "templates"
+TEMPLATE_FOLDER: Final = MODULE / "templates"
 TEMPLATE_FUNCTIONS: dict[Path, Callable[[], str]] = {}
-STATIC_FOLDER: Final = CORE / "static"
+STATIC_FOLDER: Final = MODULE / "static"
 STATIC_FUNCTIONS: dict[Path, Callable[[], str]] = {}
 
 
@@ -149,7 +149,7 @@ def generate_style_css() -> str:
                 "#noticeText",
                 font_size="10px",
                 display="inline-block",
-                white_space="normal",
+                white_space="nowrap",
             ),
             htmlgen.css(
                 'input[type="submit"]',

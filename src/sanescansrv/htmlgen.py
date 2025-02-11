@@ -1,6 +1,6 @@
 """HTML Generation - Generate HTML & CSS programmatically.
 
-Copyright (C) 2022-2024  CoolCat467
+Copyright (C) 2022-2025  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -245,12 +245,9 @@ def input_field(
                 )
     lines.append(tag("input", **args))
     if field_title is not None:
-        kwargs: dict[str, TagArg] = {
-            "for_": field_id,
-        }
-        lines.append(wrap_tag("label", field_title, False, **kwargs))
+        lines.append(wrap_tag("label", field_title, False, for_=field_id))
     # If label should be before, reverse.
-    if field_type in {"number"}:
+    if field_type in {"number", "text"}:
         return "\n".join(reversed(lines))
     return "\n".join(lines)
 
@@ -262,7 +259,7 @@ def select_dict(
 ) -> str:
     """Create radio select from dictionary.
 
-    options is a mapping of display text to submit as
+    Options is a mapping of display text to submit as
     field values and or field types for the html input.
     """
     lines = []
