@@ -413,7 +413,10 @@ def get_device_settings(device_addr: str) -> list[DeviceOption]:
                 sane_option.is_settable(),
             )
             if option.active:
-                option.default = getattr(sane_device, option.py_name)
+                try:
+                    option.default = getattr(sane_device, option.py_name)
+                except AttributeError:
+                    option.active = False
             options.append(option)
         return options
 
