@@ -669,17 +669,17 @@ wheels = [
 
 [[package]]
 name = "quart-trio"
-version = "0.11.1"
+version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "exceptiongroup" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
     { name = "hypercorn", extra = ["trio"] },
     { name = "quart" },
     { name = "trio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b6/21/b644db3cd4c0055af99c3e6f4fb066921fe0e21cf55afcef85208c8efa93/quart_trio-0.11.1.tar.gz", hash = "sha256:149c9c65c2faafdf455a4461b600e1983b71e593b6f8c8b91b592bbda36cea98", size = 13190 }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/83/4f10d638a3a4a8c0272a62be0fd25b3e1e3a93303094d50f3e6772f15677/quart_trio-0.12.0.tar.gz", hash = "sha256:02ec840998d0e897eeabc0e5f48c12d8204e91a823870fd0b8b2f7331b44198c", size = 14979 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/61/9320f40bc363095bdb0c5e0c94b99cd582decfa61c2094f60d068fafe077/quart_trio-0.11.1-py3-none-any.whl", hash = "sha256:d4da1ab7699e44357f7788e1b5a30158680e999cf6b8e9ee762ce22164218bc0", size = 16062 },
+    { url = "https://files.pythonhosted.org/packages/15/25/d81afff51d0f7770d0b27c41d910e6a0aa0513ea83dd29014d2f2307d993/quart_trio-0.12.0-py3-none-any.whl", hash = "sha256:d42e3960f8865f18f7022f1f64093bde6de6fc8fa04bbfb1a06fa7e521d3311a", size = 16506 },
 ]
 
 [[package]]
@@ -753,7 +753,7 @@ requires-dist = [
     { name = "pytest-trio", marker = "extra == 'tests'" },
     { name = "python-sane", specifier = "~=2.9.1" },
     { name = "quart", specifier = "~=0.20.0" },
-    { name = "quart-trio", specifier = "~=0.11.1" },
+    { name = "quart-trio", specifier = "~=0.12.0" },
     { name = "ruff", marker = "extra == 'tools'", specifier = ">=0.9.2" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.1" },
     { name = "trio", specifier = "~=0.29.0" },
