@@ -1097,7 +1097,7 @@ def serve_scanner(
             config["bind"] = bound
 
             secure_locations = combine_end(
-                f"http://{addr}" for addr in sorted(bound)
+                f"https://{addr}" for addr in sorted(bound)
             )
             print(f"Serving on {secure_locations} securely")
 
