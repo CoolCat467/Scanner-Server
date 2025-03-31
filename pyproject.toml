@@ -33,7 +33,7 @@ classifiers = [
 keywords = ["scanner", "sane", "server", "frontend"]
 dependencies = [
     "hypercorn[trio]~=0.17.3",
-    "Pillow~=11.0.0",
+    "Pillow~=11.1.0",
     "python-sane~=2.9.1",
     "quart~=0.20.0",
     "quart-trio~=0.11.1",
@@ -41,6 +41,10 @@ dependencies = [
     "Werkzeug~=3.1.3",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
     'tomli >= 2.0.1; python_version < "3.11"',
+    # temporary until flask release that includes
+    # https://github.com/pallets/flask/pull/5659 happens
+    # for typing reasons
+    "flask @ git+https://github.com/pallets/flask.git",
 ]
 
 [tool.setuptools.dynamic]

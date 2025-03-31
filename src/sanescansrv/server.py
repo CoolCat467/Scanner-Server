@@ -597,7 +597,7 @@ async def preform_scan_async(
     return filename
 
 
-@app.get("/scan/<scan_filename>")  # type: ignore[type-var]
+@app.get("/scan/<scan_filename>")
 @pretty_exception
 async def handle_scan_get(
     scan_filename: str,
@@ -613,7 +613,7 @@ async def handle_scan_get(
     return await send_file(temp_file, attachment_filename=scan_filename)
 
 
-@app.get("/scan-status")  # type: ignore[type-var]
+@app.get("/scan-status")
 @pretty_exception
 async def scan_status_get() -> (
     AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse
@@ -689,7 +689,7 @@ def get_default_device() -> str:
         return "None"
 
 
-@app.get("/")  # type: ignore[type-var]
+@app.get("/")
 async def root_get() -> AsyncIterator[str]:
     """Handle main page GET request."""
     return await stream_template(
@@ -699,7 +699,7 @@ async def root_get() -> AsyncIterator[str]:
     )
 
 
-@app.post("/")  # type: ignore[type-var]
+@app.post("/")
 @pretty_exception
 async def root_post() -> (
     WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
@@ -751,7 +751,7 @@ async def update_scanners_async() -> bool:
     return True
 
 
-@app.get("/update_scanners")  # type: ignore[type-var]
+@app.get("/update_scanners")
 @pretty_exception
 async def update_scanners_get() -> (
     WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
@@ -768,7 +768,7 @@ async def update_scanners_get() -> (
     return app.redirect("scanners")
 
 
-@app.get("/scanners")  # type: ignore[type-var]
+@app.get("/scanners")
 async def scanners_get() -> AsyncIterator[str]:
     """Scanners page get handling."""
     return await stream_template(
@@ -897,7 +897,7 @@ def get_scanner(scanner: str) -> Device | None:
     return item
 
 
-@app.get("/settings")  # type: ignore[type-var]
+@app.get("/settings")
 async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     """Handle settings page GET."""
     scanner = request.args.get("scanner", "none")
@@ -912,7 +912,7 @@ async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     )
 
 
-@app.post("/settings")  # type: ignore[type-var]
+@app.post("/settings")
 async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     """Handle settings page POST."""
     scanner = request.args.get("scanner", "none")
