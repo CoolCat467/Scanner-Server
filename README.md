@@ -66,3 +66,12 @@ For my installation, I ended up [installing it with pip](https://pypi.org/projec
 6) Either run certbot from duckdns plugin's README or run [/scripts/cert_create.sh](https://github.com/CoolCat467/Scanner-Server/blob/main/scripts/cert_create.sh) with your details.
 7) Setup autorenewal from [certbot wiki](https://eff-certbot.readthedocs.io/en/latest/using.html#setting-up-automated-renewal) or look at [/scripts/cert_renew.sh](https://github.com/CoolCat467/Scanner-Server/blob/main/scripts/cert_renew.sh)
 8) Uncomment SSL lines in the webserver configuration file (see section above) and edit as needed for your particular setup.
+
+
+### Links
+* Source Code - https://github.com/CoolCat467/Scanner-Server.git
+* Issues      - https://github.com/CoolCat467/Scanner-Server/issues
+
+### License
+-------
+Code and documentation are available according to the GNU General Public License v3.0 (see [LICENSE](https://github.com/CoolCat467/Scanner-Server/blob/HEAD/LICENSE)).

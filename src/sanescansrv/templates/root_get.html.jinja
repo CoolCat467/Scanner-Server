@@ -31,9 +31,9 @@
         <div class="box">
           <span>Select a Scanner:</span>
           <br>
-          {% for display, value in scanners.items() %}
-          <input {% if value == default %}checked="checked"{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ value }}">
-          <label for="scanner_{{ loop.index0 }}">{{ display }}</label>
+          {% for scanner in scanners %}
+          <input {% if scanner.device_name == default %}checked="checked"{% endif %}{% if not scanner.active %}disabled{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ scanner.device_name }}">
+          <label for="scanner_{{ loop.index0 }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</label>
           <br>
           {% else %}
           <input type="radio" id="scanner_0" name="scanner" value="none" checked="checked">
@@ -51,7 +51,7 @@
     <footer>
       <i>If you're reading this, the web server was installed correctly.™</i>
       <hr>
-      <p>Sane Scanner Webserver v3.1.0 © CoolCat467</p>
+      <p>Sane Scanner Webserver v3.2.0 © CoolCat467</p>
     </footer>
   </body>
 </html>

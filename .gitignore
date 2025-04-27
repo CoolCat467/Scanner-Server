@@ -1,10 +1,3 @@
-# Project-specific generated files
-docs/build/
-
-bench/results/
-bench/env/
-bench/trio/
-
 # Temp file during Mypy processing
 mypy_annotate.dat
 test-results.xml

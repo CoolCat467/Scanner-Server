@@ -53,11 +53,15 @@ def log(message: str, level: int = 1, log_dir: str | None = None) -> None:
     log_time = time.asctime()
     log_message_text = message.encode("unicode_escape").decode("utf-8")
 
-    log_msg = f"[{PROGRAM_TITLE}] [{log_time}] [{log_level}] {log_message_text}"
+    log_msg = (
+        f"[{PROGRAM_TITLE}] [{log_time}] [{log_level}] {log_message_text}"
+    )
 
     # Open in append mode; this will create the file if it doesn't exist
     with open(log_file, mode="a", encoding="utf-8") as file:
-        file.write(f"{log_msg}\n")  # This handles both file creation and writing
+        file.write(
+            f"{log_msg}\n",
+        )  # This handles both file creation and writing
     print(log_msg)
 
 

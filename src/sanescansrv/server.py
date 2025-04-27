@@ -20,12 +20,12 @@ from __future__ import annotations
 
 __title__ = "Sane Scanner Webserver"
 __author__ = "CoolCat467"
-__version__ = "3.1.0"
+__version__ = "3.2.0"
 __license__ = "GNU General Public License Version 3"
 
 
-import contextlib
 import functools
+import itertools
 import math
 import socket
 import statistics
@@ -34,14 +34,20 @@ import tempfile
 import time
 import traceback
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping
-from dataclasses import dataclass
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+)
+from dataclasses import dataclass, field
 from enum import IntEnum, auto
 from io import StringIO
 from os import getenv, makedirs, path
 from pathlib import Path
 from shutil import rmtree
-from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar
 from urllib.parse import urlencode
 
 import sane
@@ -66,10 +72,15 @@ else:
 
 if TYPE_CHECKING:
     from quart.wrappers.response import Response as QuartResponse
+    from typing_extensions import ParamSpec
     from werkzeug import Response as WerkzeugResponse
 
+    PS = ParamSpec("PS")
+
 HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
-XDG_DATA_HOME: Final = trio.Path(getenv("XDG_DATA_HOME", HOME / ".local" / "share"))
+XDG_DATA_HOME: Final = trio.Path(
+    getenv("XDG_DATA_HOME", HOME / ".local" / "share"),
+)
 XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
 
 FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
@@ -84,7 +95,7 @@ logger.set_title(__title__)
 
 SANE_INITIALIZED = False
 
-Handler = TypeVar("Handler", bound=Callable[..., Awaitable[object]])
+T = TypeVar("T")
 
 
 def stop_sane() -> None:
@@ -161,11 +172,16 @@ def pretty_exception_name(exc: BaseException) -> str:
     return f"{error} ({reason})"
 
 
-def pretty_exception(function: Handler) -> Handler:
+def pretty_exception(
+    function: Callable[PS, Awaitable[T]],
+) -> Callable[PS, Awaitable[T | tuple[AsyncIterator[str], int]]]:
     """Make exception pages pretty."""
 
     @functools.wraps(function)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(  # type: ignore[misc]
+        *args: PS.args,
+        **kwargs: PS.kwargs,
+    ) -> T | tuple[AsyncIterator[str], int]:
         code = 500
         name = "Exception"
         desc = (
@@ -198,7 +214,7 @@ def pretty_exception(function: Handler) -> Handler:
             desc,
         )
 
-    return cast(Handler, wrapper)
+    return wrapper
 
 
 # Stolen from WOOF (Web Offer One File), Copyright (C) 2004-2009 Simon Budig,
@@ -231,33 +247,220 @@ def find_ip() -> str:
     return candidates[0]
 
 
-def get_devices() -> dict[str, str]:
-    """Return dict of SANE name to device."""
-    restart_sane()
-    # Model name : Device
-    devices: dict[str, str] = {}
-    for device_name, _vendor, model, _type in sane.get_devices(localOnly=True):
-        devices[model] = device_name
-    return devices
+@dataclass
+class DeviceOptionsGroup:
+    """A group of scanner options."""
+
+    name: None | str
+    title: None | str
+
+
+if TYPE_CHECKING:
+
+    class TypeEnum(IntEnum):
+        """Type Enum."""
+
+        TYPE_BOOL = 0
+        TYPE_INT = auto()
+        TYPE_FIXED = auto()
+        TYPE_STRING = auto()
+        TYPE_BUTTON = auto()
+        TYPE_GROUP = auto()
+
+    class UnitEnum(IntEnum):
+        """Unit Enum."""
+
+        UNIT_NONE = 0
+        UNIT_PIXEL = auto()
+        UNIT_BIT = auto()
+        UNIT_MM = auto()
+        UNIT_DPI = auto()
+        UNIT_PERCENT = auto()
+        UNIT_MICROSECOND = auto()
+
+else:
+    TypeEnum = IntEnum(
+        "TypeEnum",
+        {name: index for index, name in sane.TYPE_STR.items()},
+    )
+    UnitEnum = IntEnum(
+        "UnitEnum",
+        {name: index for index, name in sane.UNIT_STR.items()},
+    )
+
+
+TYPE_CONVERSION: Final = {
+    TypeEnum.TYPE_BOOL: bool,
+    TypeEnum.TYPE_INT: int,
+    TypeEnum.TYPE_FIXED: float,
+    TypeEnum.TYPE_STRING: str,
+}
+
+
+UNIT_CONVERSION: Final = {
+    UnitEnum.UNIT_NONE: "",
+    UnitEnum.UNIT_PIXEL: "px",
+    UnitEnum.UNIT_BIT: "bit",
+    UnitEnum.UNIT_MM: "mm",
+    UnitEnum.UNIT_DPI: "dpi",
+    UnitEnum.UNIT_PERCENT: "%",
+    UnitEnum.UNIT_MICROSECOND: "ms",
+}
+
+
+def convert_type(
+    sane_type: TypeEnum,
+    value: str | int | float | bool | None,
+) -> str | int | float | bool | None:
+    """Convert the sane attribute value according to its type representation."""
+    if value is None:
+        return None
+
+    convert: type[str | int | float | bool] = TYPE_CONVERSION[sane_type]
+    return convert(value)
 
 
 @dataclass
-class DeviceSetting:
-    """Setting for device."""
+class DeviceOptionDataClass:
+    """Data Storage for DeviceOption."""
 
     name: str
     title: str
-    options: list[str | int] | tuple[int | float, int | float, int | float]
-    default: str
-    unit: str
-    desc: str
-    option_type: str
-    set: str | None = None
-    usable: bool = True
+    desc: str = field(repr=False)
+    group: DeviceOptionsGroup
+    type: TypeEnum
+    unit: UnitEnum
+    constraint: (
+        list[str | int | bool]
+        | tuple[int | float, int | float, int | float]
+        | None
+    )
+    py_name: str = field(repr=False)
+    active: bool
+    settable: bool
+    default: None | str | int | float | bool = field(
+        init=False,
+        default=None,
+    )
+    value: None | str | int | float = field(
+        init=False,
+        default=None,
+    )
 
-    def as_argument(self) -> str:
-        """Return setting as argument."""
-        return f"--{self.name}={self.set if self.set is not None else self.default}"
+    def __post_init__(self) -> None:
+        """Assure default types in dataclass."""
+        if self.type == TypeEnum.TYPE_BOOL:
+            self.constraint = [True, False]
+        self.active = bool(self.active)
+        self.settable = bool(self.settable)
+
+
+class DeviceOption(DeviceOptionDataClass):
+    """A scanner option."""
+
+    _default: str | int | float | bool | None = None
+    _value: str | int | float | bool | None = None
+
+    @property
+    def default(
+        self,
+    ) -> str | int | float | bool | None:
+        """Default value of this option."""
+        return self._default
+
+    @default.setter
+    def default(self, value: str | int | float | bool | None) -> None:
+        self._default = convert_type(self.type, value)
+
+    @property
+    def value(
+        self,
+    ) -> str | int | float | bool | None:
+        """Current value of this option."""
+        if self._value is None:
+            return self.default
+        return self._value
+
+    @value.setter
+    def value(self, value: str | int | float | bool) -> None:
+        if not self.settable:
+            raise ValueError(f"Attribute {self.name} is not settable")
+        self._value = convert_type(self.type, value)
+
+
+def get_device_settings(device_addr: str) -> list[DeviceOption]:
+    """Get Options for Scanner Device."""
+    with sane.open(device_addr) as sane_device:
+        options: list[DeviceOption] = []
+        group = DeviceOptionsGroup(None, None)
+        for args in sane_device.get_options():
+            sane_option = sane.Option(args, sane_device)
+            type_ = TypeEnum[sane.TYPE_STR[sane_option.type]]
+            if type_ == TypeEnum.TYPE_GROUP:
+                group = DeviceOptionsGroup(
+                    sane_option.name,
+                    sane_option.title,
+                )
+                continue
+            option = DeviceOption(
+                sane_option.name,
+                sane_option.title,
+                sane_option.desc,
+                group,
+                type_,
+                UnitEnum[sane.UNIT_STR[sane_option.unit]],
+                sane_option.constraint,
+                sane_option.py_name,
+                bool(sane_option.is_active()),
+                sane_option.is_settable(),
+            )
+            if option.active:
+                try:
+                    option.default = getattr(sane_device, option.py_name)
+                except AttributeError:
+                    option.active = False
+            options.append(option)
+        return options
+
+
+@dataclass
+class Device:
+    """A scanner (SANE mapping) Device."""
+
+    """The device name, suitable for passing to sane.open()"""
+    device_name: str
+    """The device vendor."""
+    vendor: str
+    """The device model vendor."""
+    model: str
+    """The device type, such as "virtual device" or "video camera"."""
+    type_: str
+    options: list[DeviceOption] = field(
+        init=False,
+        default_factory=list,
+        repr=False,
+    )
+    active: bool = field(init=False, default=True)
+
+    @property
+    def url(self) -> str:
+        """Return a urlencoded name of the device."""
+        return urlencode({"scanner": self.device_name})
+
+
+def get_devices() -> list[Device]:
+    """Return dict of SANE name to device."""
+    restart_sane()
+    devices: list[Device] = []
+    for device in itertools.starmap(Device, sane.get_devices(localOnly=True)):
+        try:
+            device.options = get_device_settings(device.device_name)
+        except SaneError as err:
+            device.active = False
+            print(f"Device {device.device_name} had an error: {err}")
+        finally:
+            devices.append(device)
+    return devices
 
 
 app: Final = QuartTrio(  # pylint: disable=invalid-name
@@ -268,78 +471,13 @@ app: Final = QuartTrio(  # pylint: disable=invalid-name
 APP_STORAGE: Final[dict[str, Any]] = {}
 
 
-def get_device_settings(device_addr: str) -> list[DeviceSetting]:
-    """Get device settings."""
-    settings: list[DeviceSetting] = []
-
-    try:
-        device = sane.open(device_addr)
-    except SaneError:
-        return []
-
-    for result in device.get_options():
-        # print(f"\n{result = }")
-        if not result[1]:
-            continue
-
-        option = sane.Option(result, device)
-
-        usable = True
-        if not option.is_settable():
-            # print("> Not settable")
-            usable = False
-
-        if not option.is_active():
-            usable = False
-
-        # Disable button control items for now (greyed out)
-        if usable and "button" in option.name:
-            usable = False
-
-        constraints: list[str | int] | tuple[int | float, int | float, int | float] = []
-        if option.constraint is not None:
-            constraints = option.constraint
-            if isinstance(option.constraint, tuple) and len(option.constraint) != 3:
-                usable = False
-        type_ = sane.TYPE_STR[option.type].removeprefix("TYPE_")
-        # print(f'{type_ = }')
-
-        if type_ == "BOOL":
-            constraints = [0, 1]
-
-        option_type = type_
-
-        default = "None"
-        with contextlib.suppress(AttributeError, ValueError):
-            default = str(getattr(device, option.py_name))
-        # print(f'{default = }')
-
-        unit = sane.UNIT_STR[option.unit].removeprefix("UNIT_")
-
-        settings.append(
-            DeviceSetting(
-                name=option.name,
-                title=option.title,
-                options=constraints,
-                default=default,
-                unit=unit,
-                desc=option.desc,
-                option_type=option_type,
-                usable=usable,
-            ),
-        )
-
-    device.close()
-    return settings
-
-
 def display_progress(current: int, total: int) -> None:
     """Display progress of the active scan."""
     print(f"{current / total * 100:.2f}%")
 
 
 def preform_scan(
-    device_name: str,
+    device: Device,
     out_type: str = "png",
     progress: Callable[[int, int], object] = display_progress,
 ) -> str:
@@ -352,48 +490,23 @@ def preform_scan(
         makedirs(TEMP_PATH)
     filepath = TEMP_PATH / filename
 
-    ints = {"TYPE_BOOL", "TYPE_INT"}
-    float_ = "TYPE_FIXED"
-
-    with sane.open(device_name) as device:
-        for setting in APP_STORAGE["device_settings"][device_name]:
-            name = setting.name.replace("-", "_")
-            if setting.set is None:
+    with sane.open(device.device_name) as sane_device:
+        for option in device.options:
+            if not option.settable:
                 continue
-            if not setting.usable:
-                continue
-            value: str | int | float = setting.set
-            if sane.TYPE_STR[device[name].type] == float_:
-                assert isinstance(value, str), f"{value = } {type(value) = }"
-                try:
-                    value = float(value)
-                except ValueError:
-                    continue
-            elif sane.TYPE_STR[device[name].type] in ints:
-                assert isinstance(value, str), f"{value = } {type(value) = }"
-                if value.isdigit():
-                    value = int(value)
-                options = setting.options
-                if options and isinstance(options, tuple):
-                    min_ = options[0]
-                    # Skip autocalibration values
-                    if min_ == -1 and value == -1:
-                        continue
+            if option.value is None:
+                continue  # cannot set None
+            if option.default == option.value:
+                continue  # nothing to set
             try:
-                setattr(device, name, value)
-            except (AttributeError, TypeError) as exc:
-                print(f"\n{name} = {value}")
-                # traceback.print_exception changed in 3.10
-                if sys.version_info < (3, 10):
-                    tb = sys.exc_info()[2]
-                    traceback.print_exception(etype=None, value=exc, tb=tb)
-                else:
-                    traceback.print_exception(exc)
-                ## APP_STORAGE["device_settings"][device_name][idx].usable = False
-        with device.scan(progress) as image:
-            # bounds = image.getbbox()
+                setattr(sane_device, option.py_name, option.value)
+            except (AttributeError, TypeError):
+                print(f"{option.name} = {option.value!r}")
+        with sane_device.scan(progress) as image:
+            bounds = image.getbbox()
+            if bounds is not None:
+                image = image.crop(bounds)
             image.save(filepath, out_type)
-
     return filename
 
 
@@ -430,7 +543,7 @@ SCAN_LOCK = trio.Lock()
 
 
 async def preform_scan_async(
-    device_name: str,
+    device: Device,
     out_type: str,
     task_status: trio.TaskStatus[Any] = trio.TASK_STATUS_IGNORED,
 ) -> str | None:
@@ -459,12 +572,12 @@ async def preform_scan_async(
         try:
             filename = await trio.to_thread.run_sync(
                 preform_scan,  # fake_preform_scan,
-                device_name,
+                device,
                 out_type,
                 progress,
                 thread_name="preform_scan_async",
             )
-        except SaneError as exc:
+        except (SaneError, RuntimeError) as exc:
             # traceback.print_exception changed in 3.10
             if sys.version_info < (3, 10):
                 tb = sys.exc_info()[2]
@@ -486,9 +599,11 @@ async def preform_scan_async(
     return filename
 
 
-@app.get("/scan/<scan_filename>")  # type: ignore[type-var]
+@app.get("/scan/<scan_filename>")
 @pretty_exception
-async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] | QuartResponse:
+async def handle_scan_get(
+    scan_filename: str,
+) -> tuple[AsyncIterator[str], int] | QuartResponse:
     """Handle scan result page GET request."""
     temp_file = TEMP_PATH / scan_filename
     if not temp_file.exists():
@@ -500,9 +615,11 @@ async def handle_scan_get(scan_filename: str) -> tuple[AsyncIterator[str], int] 
     return await send_file(temp_file, attachment_filename=scan_filename)
 
 
-@app.get("/scan-status")  # type: ignore[type-var]
+@app.get("/scan-status")
 @pretty_exception
-async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse:
+async def scan_status_get() -> (
+    AsyncIterator[str] | tuple[AsyncIterator[str], int] | WerkzeugResponse
+):
     """Handle scan status GET request."""
     raw_status = APP_STORAGE.get("scan_status")
     if raw_status is None:
@@ -562,44 +679,43 @@ async def scan_status_get() -> AsyncIterator[str] | tuple[AsyncIterator[str], in
     )
 
 
-@app.get("/")  # type: ignore[type-var]
+def get_default_device() -> str:
+    """Retrieve the default scan device."""
+    device = get_scanner(APP_STORAGE["default_device"])
+    if device is not None:
+        return device.device_name
+    try:
+        device = APP_STORAGE["scanners"][0]
+        return device.device_name
+    except IndexError:
+        return "None"
+
+
+@app.get("/")
 async def root_get() -> AsyncIterator[str]:
     """Handle main page GET request."""
-    scanners = {}
-    default = "none"
-
-    if APP_STORAGE["scanners"]:
-        scanners = {k: k for k in APP_STORAGE["scanners"]}
-        # Since radio_select_dict is if comparison for
-        # default, if default device does not exist
-        # there simply won't be a default shown.
-        default = APP_STORAGE["default_device"]
-        # If default not in scanners list,
-        if default not in scanners.values():
-            # Set default to first scanner
-            default = sorted(scanners.values())[0]
-
     return await stream_template(
         "root_get.html.jinja",
-        scanners=scanners,
-        default=default,
+        scanners=APP_STORAGE.get("scanners", []),
+        default=get_default_device(),
     )
 
 
-@app.post("/")  # type: ignore[type-var]
+@app.post("/")
 @pretty_exception
-async def root_post() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
+async def root_post() -> (
+    WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
+):
     """Handle page POST."""
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
     # Validate input
     img_format = data.get("img_format", "png")
-    device = APP_STORAGE["scanners"].get(data.get("scanner"), "none")
-
     if img_format not in {"pnm", "tiff", "png", "jpeg"}:
         return app.redirect("/")
-    if device == "none":
+
+    if (device := get_scanner(data.get("scanner", "none"))) is None:
         return app.redirect("/scanners")
 
     raw_status = APP_STORAGE.get("scan_status")
@@ -626,9 +742,6 @@ async def root_post() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIter
 def update_scanners() -> None:
     """Update scanners list."""
     APP_STORAGE["scanners"] = get_devices()
-    for _model, device in APP_STORAGE["scanners"].items():
-        if device not in APP_STORAGE["device_settings"]:
-            APP_STORAGE["device_settings"][device] = get_device_settings(device)
 
 
 async def update_scanners_async() -> bool:
@@ -640,9 +753,11 @@ async def update_scanners_async() -> bool:
     return True
 
 
-@app.get("/update_scanners")  # type: ignore[type-var]
+@app.get("/update_scanners")
 @pretty_exception
-async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]:
+async def update_scanners_get() -> (
+    WerkzeugResponse | AsyncIterator[str] | tuple[AsyncIterator[str], int]
+):
     """Update scanners get handling."""
     success = await update_scanners_async()
     if not success:
@@ -655,74 +770,78 @@ async def update_scanners_get() -> WerkzeugResponse | AsyncIterator[str] | tuple
     return app.redirect("scanners")
 
 
-@app.get("/scanners")  # type: ignore[type-var]
+@app.get("/scanners")
 async def scanners_get() -> AsyncIterator[str]:
     """Scanners page get handling."""
-    scanners = {}
-    for display in APP_STORAGE.get("scanners", {}):
-        scanner_url = urlencode({"scanner": display})
-        scanners[f"/settings?{scanner_url}"] = display
-
     return await stream_template(
         "scanners_get.html.jinja",
-        scanners=scanners,
+        scanners=APP_STORAGE.get("scanners", []),
     )
 
 
-def get_setting_radio(setting: DeviceSetting) -> str | None:
+def get_setting_radio(option: DeviceOption) -> str | None:
     """Return setting radio section."""
-    box_title = f"{setting.title} - {setting.desc}"
+    box_title = f"{option.title} - {option.desc}"
 
-    default = setting.default if setting.set is None else setting.set
-    options: Mapping[str, str | dict[str, str]] = {}
+    default = option.value
+    inputs: Mapping[str, str | bool | dict[str, str]] = {}
+    pass_default: str | bool | None = (
+        str(default) if default is not None else None
+    )
 
-    if setting.option_type == "BOOL":
-        options = {"True": "1", "False": "0"}
-    elif setting.option_type == "STRING":
-        options = {f"{x}".title(): f"{x}" for x in setting.options}
-    elif setting.option_type in {"INT", "FIXED"}:
-        if isinstance(setting.options, list):
-            options = {x: x for x in (f"{x}" for x in setting.options)}
-        elif isinstance(setting.options, tuple):
-            attributes: dict[str, str] = {"type": "number", "value": f"{default}"}
+    if option.type == TypeEnum.TYPE_BOOL:
+        inputs = {option.name.title(): True}
+        pass_default = bool(default)
+    elif option.type == TypeEnum.TYPE_STRING and option.constraint is not None:
+        inputs = {f"{x}".title(): f"{x}" for x in option.constraint}
+    elif option.type in {TypeEnum.TYPE_INT, TypeEnum.TYPE_FIXED}:
+        if isinstance(option.constraint, list):
+            inputs = {x: x for x in (f"{x}" for x in option.constraint)}
+        elif isinstance(option.constraint, tuple):
+            attributes: dict[str, str] = {
+                "type": "number",
+                "value": f"{default}",
+            }
             extra = ""
-            if len(setting.options) != 3:
+            if len(option.constraint) != 3:
                 response_html = htmlgen.wrap_tag(  # type: ignore[unreachable]
                     "p",
                     "Numerical range constraints are invalid, please report!",
                     block=False,
                 )
                 return htmlgen.contain_in_box(response_html, box_title)
-            min_, max_, step = setting.options
+            min_, max_, step = option.constraint
             attributes.update(
                 {
                     "min": f"{min_}",
                     "max": f"{max_}",
                 },
             )
-            extra = f", Min {min_}, Max {max_}"
+            extra = f"Min {min_}, Max {max_}"
             if step != 0:
                 attributes["step"] = f"{step}"
                 if step != 1:
                     extra += f", Step {step}"
-            elif setting.option_type == "FIXED":
+            elif option.type == TypeEnum.TYPE_FIXED:
                 attributes["step"] = "any"
                 extra += ", w/ decimal support"
-            if setting.option_type == "INT" and min_ == -1:
+            if option.type == TypeEnum.TYPE_FIXED and min_ == -1:
                 extra += " (-1 means autocalibration)"
-            options = {f"Value ({setting.unit}{extra})": attributes}
+            unit = UNIT_CONVERSION[option.unit]
+            unit_data = f" [{unit}]" if unit else ""
+            inputs = {f"Value ({extra}{unit_data})": attributes}
     else:
         return None
     ##else:
     ##    response_html = htmlgen.wrap_tag(
     ##        "p",
-    ##        f"No options exist for {setting.option_type!r} option types at this time.",
+    ##        f"No option exist for {option.type!r} option types at this time.",
     ##        block=False,
     ##    )
     ##    return htmlgen.contain_in_box(response_html, box_title)
     ##else:
     ##    import pprint
-    ##    formatted = pprint.pformat(setting)
+    ##    formatted = pprint.pformat(option)
     ##    formatted = formatted.replace(" ", "&nbsp;")
     ##    response_html = htmlgen.wrap_tag(
     ##        "textarea",
@@ -731,74 +850,98 @@ def get_setting_radio(setting: DeviceSetting) -> str | None:
     ##        rows=len(formatted.splitlines()),
     ##        cols=80,
     ##    )
-    ##    return htmlgen.contain_in_box(response_html, f"{setting.title} - {setting.desc}")
+    ##    return htmlgen.contain_in_box(response_html, f"{option.title} - {option.desc}")
 
-    # Don't display options without settings.
-    if not options:
+    # Don't display option without settings.
+    if not inputs:
         return None
 
-    # If no options to select from, no need to display and waste screen space
-    if len(options) == 1 and setting.option_type not in {"INT", "FIXED"}:
+    # If no inputs to select from, no need to display and waste screen space
+    if len(inputs) == 1 and option.type not in {
+        TypeEnum.TYPE_INT,
+        TypeEnum.TYPE_FIXED,
+        TypeEnum.TYPE_BOOL,
+    }:
         return None
 
-    if not setting.usable:
+    if not option.settable or not option.active:
         # If not changeable, why display to user? That's asking for confusion.
+        # Note: option.active settings are readable
         return None
         # Disable option
-        ##for title, value in tuple(options.items()):
+        ##for title, value in tuple(inputs.items()):
         ##    if isinstance(value, str):
-        ##        options[title] = {
+        ##        inputs[title] = {
         ##            "value": value,
         ##            "disabled": "disabled",
         ##        }
         ##    else:
-        ##        assert isinstance(options[title], dict)
-        ##        options[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
+        ##        assert isinstance(inputs[title], dict)
+        ##        inputs[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
 
     return htmlgen.select_box(
-        submit_name=setting.name,
-        options=options,
-        default=default,
+        submit_name=option.name,
+        options=inputs,
+        default=pass_default,
         box_title=box_title,
     )
 
 
-@app.get("/settings")  # type: ignore[type-var]
+def get_scanner(scanner: str) -> Device | None:
+    """Get scanner device from globally stored devices."""
+    devices: list[Device] = APP_STORAGE.get("scanners", [])
+    scanners = [device.device_name for device in devices]
+    if scanner not in scanners:
+        return None
+    idx = scanners.index(scanner)
+    item = devices[idx]
+    assert isinstance(item, Device)
+    return item
+
+
+@app.get("/settings")
 async def settings_get() -> AsyncIterator[str] | WerkzeugResponse:
     """Handle settings page GET."""
     scanner = request.args.get("scanner", "none")
 
-    if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
+    if (device := get_scanner(scanner)) is None:
         return app.redirect("/scanners")
-
-    device = APP_STORAGE["scanners"][scanner]
-    scanner_settings = APP_STORAGE["device_settings"].get(device, [])
 
     return await stream_template(
         "settings_get.html.jinja",
-        scanner=scanner,
-        radios="\n".join(x for x in (get_setting_radio(setting) for setting in scanner_settings) if x),
+        scanner=device.model,
+        radios="\n".join(filter(None, map(get_setting_radio, device.options))),
     )
 
 
-@app.post("/settings")  # type: ignore[type-var]
+@app.post("/settings")
 async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
     """Handle settings page POST."""
     scanner = request.args.get("scanner", "none")
 
-    if scanner == "none" or scanner not in APP_STORAGE["scanners"]:
+    if (device := get_scanner(scanner)) is None:
         return app.redirect("/scanners")
 
-    device = APP_STORAGE["scanners"][scanner]
-    scanner_settings = APP_STORAGE["device_settings"][device]
-
-    valid_settings = {setting.name: idx for idx, setting in enumerate(scanner_settings)}
+    valid_settings = {
+        option.name: idx for idx, option in enumerate(device.options)
+    }
 
     multi_dict = await request.form
     data = multi_dict.to_dict()
 
     if data.get("settings_update_submit_button"):
         data.pop("settings_update_submit_button")
+
+    # Web browsers don't send unchecked items
+    for option in device.options:
+        if (
+            option.type == TypeEnum.TYPE_BOOL
+            and option.settable
+            and option.active
+            and option.value
+            and option.name not in data
+        ):
+            data[option.name] = "false"
 
     errors: list[str] = []
 
@@ -808,32 +951,44 @@ async def settings_post() -> tuple[AsyncIterator[str], int] | WerkzeugResponse:
             errors.append(f"{setting_name} not valid")
             continue
         idx = valid_settings[setting_name]
-        if not scanner_settings[idx].usable:
-            errors.append(f"{setting_name} not usable")
+        option = device.options[idx]
+        if not option.settable:
+            errors.append(f"{setting_name} not settable")
             continue
-        options = scanner_settings[idx].options
-        if isinstance(options, list) and str(new_value) not in set(map(str, options)):
-            errors.append(f"{setting_name}[{new_value}] invalid option)")
-            continue
-        if isinstance(options, tuple):
-            if len(options) != 3:
+        if option.type == TypeEnum.TYPE_BOOL:
+            new_value = new_value.title()
+        constraint = option.constraint
+        if isinstance(constraint, list):
+            valid_options = list(map(str, constraint))
+            try:
+                new_value = constraint[valid_options.index(str(new_value))]
+            except ValueError as err:
+                errors.append(
+                    f"{setting_name}[{new_value}] invalid option: {err} {valid_options}",
+                )
+                continue
+        if isinstance(constraint, tuple):
+            if len(constraint) != 3:
                 raise RuntimeError("Should be unreachable")
             try:
                 as_float = float(new_value)
             except ValueError:
                 errors.append(f"{setting_name}[{new_value}] invalid float")
                 continue
-            min_, max_, step = options
+            min_, max_, step = constraint
             if as_float < min_ or as_float > max_:
                 errors.append(f"{setting_name}[{new_value}] out of bounds")
                 continue
             if step and as_float % step != 0:
                 errors.append(f"{setting_name}[{new_value}] bad step multiple")
                 continue
-        APP_STORAGE["device_settings"][device][idx].set = new_value
+        option.value = new_value
 
     if errors:
-        errors.insert(0, "Request succeeded, but the following errors were encountered:")
+        errors.insert(
+            0,
+            "Request succeeded, but the following errors were encountered:",
+        )
         return await get_exception_page(
             400,  # bad request
             "Bad Request",
@@ -864,7 +1019,9 @@ def xml_to_dict(xml_str: str) -> dict[str, object]:
     return data
 
 
-@app.post("/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery")
+@app.post(
+    "/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery",
+)
 async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     """Handle stable_ws_discovery_endpoint POST."""
     # https://specs.xmlsoap.org/ws/2005/04/discovery/ws-discovery.pdf
@@ -887,18 +1044,30 @@ async def stable_ws_discovery_endpoint() -> WerkzeugResponse:
     to_addr: str | None = None
 
     for value in header:
-        action = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}Action")
+        action = value.get(
+            "{http://schemas.xmlsoap.org/ws/2004/08/addressing}Action",
+        )
         if action == "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe":
-            message_id = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}MessageID")
-            to_addr = value.get("{http://schemas.xmlsoap.org/ws/2004/08/addressing}To")
-            log(f"SOAP {message_id = } {to_addr = }", 0, log_dir=DATA_PATH / "logs")
+            message_id = value.get(
+                "{http://schemas.xmlsoap.org/ws/2004/08/addressing}MessageID",
+            )
+            to_addr = value.get(
+                "{http://schemas.xmlsoap.org/ws/2004/08/addressing}To",
+            )
+            log(
+                f"SOAP {message_id = } {to_addr = }",
+                0,
+                log_dir=DATA_PATH / "logs",
+            )
             break
 
     probe_uri = request.host_url  # url_root
 
     respond_message_id = uuid.uuid5(uuid.NAMESPACE_DNS, probe_uri)
     relates_to = message_id
-    reply_to = "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
+    reply_to = (
+        "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
+    )
 
     version = 1
 
@@ -959,7 +1128,9 @@ def serve_scanner(
 ) -> None:
     """Asynchronous Entry Point."""
     if secure_bind_port is None and insecure_bind_port is None:
-        raise ValueError("Port must be specified with `port` and or `ssl_port`!")
+        raise ValueError(
+            "Port must be specified with `port` and or `ssl_port`!",
+        )
 
     if not ip_addr:
         ip_addr = find_ip()
@@ -992,7 +1163,9 @@ def serve_scanner(
         if insecure_bind_port is not None:
             raw_bound = config.get("insecure_bind", [])
             if not isinstance(raw_bound, Iterable):
-                raise ValueError("main.bind must be an iterable object (set in config file)!")
+                raise ValueError(
+                    "main.bind must be an iterable object (set in config file)!",
+                )
             bound = set(raw_bound)
             bound |= {f"{ip_addr}:{insecure_bind_port}"}
             config["insecure_bind"] = bound
@@ -1002,18 +1175,24 @@ def serve_scanner(
                 config["bind"] = config["insecure_bind"]
                 config["insecure_bind"] = []
 
-            insecure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            insecure_locations = combine_end(
+                f"http://{addr}" for addr in sorted(bound)
+            )
             print(f"Serving on {insecure_locations} insecurely")
 
         if secure_bind_port is not None:
             raw_bound = config.get("bind", [])
             if not isinstance(raw_bound, Iterable):
-                raise ValueError("main.bind must be an iterable object (set in config file)!")
+                raise ValueError(
+                    "main.bind must be an iterable object (set in config file)!",
+                )
             bound = set(raw_bound)
             bound |= {f"{ip_addr}:{secure_bind_port}"}
             config["bind"] = bound
 
-            secure_locations = combine_end(f"http://{addr}" for addr in sorted(bound))
+            secure_locations = combine_end(
+                f"https://{addr}" for addr in sorted(bound)
+            )
             print(f"Serving on {secure_locations} securely")
 
         app.config["EXPLAIN_TEMPLATE_LOADING"] = False
@@ -1028,9 +1207,8 @@ def serve_scanner(
 
         config_obj = Config.from_mapping(config)
 
-        APP_STORAGE["scanners"] = {}
+        APP_STORAGE["scanners"] = []
         APP_STORAGE["default_device"] = device_name
-        APP_STORAGE["device_settings"] = {}
 
         print("(CTRL + C to quit)")
 
@@ -1039,7 +1217,10 @@ def serve_scanner(
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
-                log("Shutting down from keyboard interrupt", log_dir=str(logs_path))
+                log(
+                    "Shutting down from keyboard interrupt",
+                    log_dir=str(logs_path),
+                )
                 caught = True
                 break
         if not caught:
@@ -1064,7 +1245,7 @@ def run() -> None:
                 """[main]
 # Name of scanner to use on default as displayed on the webpage
 # or by model as listed with `scanimage --formatted-device-list "%m%n"`
-printer = "Canon PIXMA MG3600 Series"
+printer = "None"
 
 # Port server should run on.
 # You might want to consider changing this to 80

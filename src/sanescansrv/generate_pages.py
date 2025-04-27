@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
+
 """Generate pages for the sane scanner web server.
 
-Copyright (C) 2022-2024  CoolCat467
+Copyright (C) 2022-2025  CoolCat467
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,12 +35,12 @@ from sanescansrv import htmlgen, server
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-SOURCE_ROOT: Final = Path.cwd()
-CORE: Final = SOURCE_ROOT / "src" / "sanescansrv"
+MODULE: Final = Path(__file__).absolute().parent
+SOURCE_ROOT: Final = MODULE.parent.parent
 
-TEMPLATE_FOLDER: Final = CORE / "templates"
+TEMPLATE_FOLDER: Final = MODULE / "templates"
 TEMPLATE_FUNCTIONS: dict[Path, Callable[[], str]] = {}
-STATIC_FOLDER: Final = CORE / "static"
+STATIC_FOLDER: Final = MODULE / "static"
 STATIC_FUNCTIONS: dict[Path, Callable[[], str]] = {}
 
 
@@ -147,7 +149,7 @@ def generate_style_css() -> str:
                 "#noticeText",
                 font_size="10px",
                 display="inline-block",
-                white_space="normal",
+                white_space="nowrap",
             ),
             htmlgen.css(
                 'input[type="submit"]',
@@ -157,6 +159,41 @@ def generate_style_css() -> str:
                 margin_left="0.5rem",
                 margin_right="0.5rem",
                 min_width="min-content",
+            ),
+            htmlgen.css(
+                "@media (prefers-color-scheme: dark)",
+                htmlgen.css(
+                    "body",
+                    background_color="#181818",
+                    color="#e0e0e0",
+                ),
+                htmlgen.css(
+                    ".box",
+                    background_color="#1e1e1e",
+                    border=("2px", "solid", "#444"),
+                ),
+                htmlgen.css(
+                    "code",
+                    background_color="rgba(255, 255, 255, 0.1)",
+                ),
+                htmlgen.css(
+                    ("input", "button"),
+                    background_color="#1e1e1e",
+                    color="#e0e0e0",
+                    border=("2px", "solid", "#444"),
+                ),
+                htmlgen.css(
+                    ("input:hover", "button:hover"),
+                    background_color="#4a4a4a",
+                ),
+                htmlgen.css(
+                    "a",
+                    color="#bb86fc",
+                ),
+                htmlgen.css(
+                    "a:hover",
+                    color="#3700b3",
+                ),
             ),
         ),
     )
@@ -258,23 +295,73 @@ def generate_error_page() -> str:
     )
 
 
+def generate_scanners() -> str:
+    """Generate radio items for scan devices."""
+    default = "default"
+    link = htmlgen.create_link("/update_scanners", "Update Devices")
+    count = htmlgen.jinja_expression("loop.index0")
+    cid = f"scanner_{count}"
+    args = {
+        "type": "radio",
+        "id": cid,
+        "name": "scanner",
+        "value": htmlgen.jinja_expression("scanner.device_name"),
+    }
+    jinja_properties: tuple[str, ...] = ()
+    default_tag = " ".join(
+        htmlgen._generate_html_attributes({"checked": "checked"}),
+    )
+    jinja_properties = (
+        htmlgen.jinja_if_block(
+            {f"scanner.device_name == {default}": default_tag},
+            block=False,
+        ),
+        htmlgen.jinja_if_block(
+            {"not scanner.active": "disabled"},
+            block=False,
+        ),
+    )
+
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
+    return htmlgen.jinja_for_loop(
+        ("scanner",),
+        "scanners",
+        "\n".join(
+            (
+                htmlgen.jinja_arg_tag("input", jinja_properties, **args),
+                htmlgen.wrap_tag(
+                    "label",
+                    " ".join(
+                        [
+                            htmlgen.jinja_expression("scanner.vendor"),
+                            htmlgen.jinja_expression("scanner.model"),
+                            f"({scanner_type_italics})",
+                        ],
+                    ),
+                    False,
+                    **{"for": cid},
+                ),
+                htmlgen.tag("br"),
+            ),
+        ),
+        else_content=htmlgen.select_dict(
+            "scanner",
+            {f"None - {link}": "none"},
+            "none",
+        ),
+    )
+
+
 @save_template_as("root_get")
 def generate_root_get() -> str:
     """Generate / (root) GET page."""
-    link = htmlgen.create_link("/update_scanners", "Update Devices")
-
     scanner_select = htmlgen.contain_in_box(
-        htmlgen.jinja_radio_select(
-            "scanner",
-            "scanners",
-            "default",
-            # htmlgen.jinja_statement('default'),
-            htmlgen.select_dict(
-                "scanner",
-                {f"None - {link}": "none"},
-                "none",
-            ),
-        ),
+        generate_scanners(),
         "Select a Scanner:",
     )
 
@@ -285,7 +372,7 @@ def generate_root_get() -> str:
         "Select Image format:",
     )
 
-    form_content = "\n".join((image_format, scanner_select))
+    form_content = f"{image_format}\n{scanner_select}"
 
     contents = htmlgen.form(
         "scan_request",
@@ -323,12 +410,36 @@ def generate_root_get() -> str:
 @save_template_as("scanners_get")
 def generate_scanners_get() -> str:
     """Generate /scanners GET page."""
+    scanner_type_italics = htmlgen.wrap_tag(
+        "i",
+        htmlgen.jinja_expression("scanner.type_"),
+        block=False,
+    )
+
+    scanner = " ".join(
+        [
+            htmlgen.jinja_expression("scanner.vendor"),
+            htmlgen.jinja_expression("scanner.model"),
+            f"({scanner_type_italics})",
+        ],
+    )
+
     scanners = htmlgen.jinja_bullet_list(
-        ("link", "disp"),
-        "scanners.items()",
-        htmlgen.create_link(
-            htmlgen.jinja_expression("link"),
-            htmlgen.jinja_expression("disp"),
+        ("scanner",),
+        "scanners",
+        htmlgen.jinja_if_block(
+            {
+                "scanner.active": htmlgen.create_link(
+                    "".join(
+                        [
+                            "/settings?",
+                            htmlgen.jinja_expression("scanner.url"),
+                        ],
+                    ),
+                    scanner,
+                ),
+                "": scanner,
+            },
         ),
         else_content=htmlgen.wrap_tag(
             "p",
@@ -406,7 +517,9 @@ def generate_scan_status_get() -> str:
     refreshes_after = htmlgen.jinja_expression("refreshes_after")
     estimated_wait = htmlgen.jinja_expression("estimated_wait")
 
-    percent = htmlgen.jinja_expression("(progress[0] / progress[1] * 100)|round(2)")
+    percent = htmlgen.jinja_expression(
+        "(progress[0] / progress[1] * 100)|round(2)",
+    )
     is_done = "progress[0] == progress[1]"
 
     title = htmlgen.jinja_if_block(
@@ -428,7 +541,10 @@ def generate_scan_status_get() -> str:
 
     refresh_link = htmlgen.create_link("/scan-status", "this link")
 
-    refresh_time_plural = htmlgen.jinja_number_plural("refreshes_after", "second")
+    refresh_time_plural = htmlgen.jinja_number_plural(
+        "refreshes_after",
+        "second",
+    )
     refresh_time_display = f"{refreshes_after} {refresh_time_plural}"
 
     content = "\n".join(

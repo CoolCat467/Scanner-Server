@@ -47,15 +47,36 @@ def test_css_block() -> None:
 
 
 def test_css_multi_select() -> None:
-    assert htmlgen.css_block(("*", "*::"), "content") == "*, *:: {\n  content\n}"
+    assert (
+        htmlgen.css_block(("*", "*::"), "content") == "*, *:: {\n  content\n}"
+    )
 
 
 def test_css() -> None:
-    assert htmlgen.css(("h1", "footer"), text_align="center") == "h1, footer {\n  text-align: center;\n}"
+    assert (
+        htmlgen.css(("h1", "footer"), text_align="center")
+        == "h1, footer {\n  text-align: center;\n}"
+    )
 
 
 def test_css_multi() -> None:
-    assert htmlgen.css(("h1", "footer"), text_align=("center", "left")) == "h1, footer {\n  text-align: center left;\n}"
+    assert (
+        htmlgen.css(("h1", "footer"), text_align=("center", "left"))
+        == "h1, footer {\n  text-align: center left;\n}"
+    )
+
+
+def test_css_subblock() -> None:
+    assert (
+        htmlgen.css(
+            "@media (prefers-color-scheme: dark)",
+            htmlgen.css(
+                ("h1", "footer"),
+                text_align=("center", "left"),
+            ),
+        )
+        == "@media (prefers-color-scheme: dark) {\n  h1, footer {\n    text-align: center left;\n  }\n}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,6 +84,8 @@ def test_css_multi() -> None:
     [
         ("p", {}, "<p>"),
         ("p", {"fish": "false"}, '<p fish="false">'),
+        ("p", {"fish": False}, '<p fish="false">'),
+        ("p", {"fish": True}, '<p fish="true">'),
         ("i", {}, "<i>"),
         (
             "input",
@@ -110,7 +133,10 @@ this is comment
 
 
 def test_wrap_comment_inline() -> None:
-    assert htmlgen.wrap_comment("smol comment", inline=True) == "<!--smol comment-->"
+    assert (
+        htmlgen.wrap_comment("smol comment", inline=True)
+        == "<!--smol comment-->"
+    )
 
 
 def test_wrap_comment_avoid_hacks() -> None:
@@ -193,6 +219,15 @@ def test_select_dict() -> None:
     )
 
 
+def test_select_dict_checkbox_bool() -> None:
+    assert (
+        htmlgen.select_dict("name_here", {"Cat mode enabled": True})
+        == """<input type="checkbox" id="name_here_0" name="name_here" value="true">
+<label for="name_here_0">Cat mode enabled</label>
+<br>"""
+    )
+
+
 def test_select_dict_lots_default() -> None:
     assert (
         htmlgen.select_dict(
@@ -255,8 +290,8 @@ def test_select_box() -> None:
 def test_input_field_no_kwarg() -> None:
     assert (
         htmlgen.input_field("<id>", "woot")
-        == """<input id="<id>" name="<id>">
-<label for="<id>">woot</label>"""
+        == """<label for="<id>">woot</label>
+<input id="<id>" name="<id>">"""
     )
 
 
@@ -265,6 +300,14 @@ def test_input_field_with_type() -> None:
         htmlgen.input_field("<id>", "woot", field_type="types woo")
         == """<input type="types woo" id="<id>" name="<id>">
 <label for="<id>">woot</label>"""
+    )
+
+
+def test_input_field_number_reverse() -> None:
+    assert (
+        htmlgen.input_field("<id>", "woot", field_type="number")
+        == """<label for="<id>">woot</label>
+<input type="number" id="<id>" name="<id>">"""
     )
 
 
@@ -306,7 +349,10 @@ def test_bullet_list() -> None:
 
 
 def test_create_link() -> None:
-    assert htmlgen.create_link("/ref", "title of lonk") == '<a href="/ref">title of lonk</a>'
+    assert (
+        htmlgen.create_link("/ref", "title of lonk")
+        == '<a href="/ref">title of lonk</a>'
+    )
 
 
 def test_link_list() -> None:
@@ -637,4 +683,7 @@ def test_jinja_super_block() -> None:
 
 
 def test_jinja_number_plural() -> None:
-    assert htmlgen.jinja_number_plural(3, "second") == "second{% if 3 > 1 %}s{% elif 3 == 0 %}s{% endif %}"
+    assert (
+        htmlgen.jinja_number_plural(3, "second")
+        == "second{% if 3 > 1 %}s{% elif 3 == 0 %}s{% endif %}"
+    )

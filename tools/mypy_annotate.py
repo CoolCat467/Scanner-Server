@@ -7,6 +7,10 @@ mypy_annotate.dat. After all platforms run, we run this again, which prints the
 messages in GitHub's format but with cross-platform failures deduplicated.
 """
 
+# Original Source:
+# https://github.com/python-trio/trio/blob/main/src/trio/_tools/mypy_annotate.py
+# Dual-licensed under your choice of MIT or Apache 2
+
 from __future__ import annotations
 
 import argparse
@@ -53,7 +57,9 @@ class Result:
 def process_line(line: str) -> Result | None:
     """Process mypy line and return Result object or None if parse error."""
     if match := report_re.fullmatch(line.rstrip()):
-        filename, st_line, st_col, end_line, end_col, kind, message = match.groups()
+        filename, st_line, st_col, end_line, end_col, kind, message = (
+            match.groups()
+        )
         return Result(
             filename=filename,
             start_line=int(st_line),
@@ -69,11 +75,17 @@ def process_line(line: str) -> Result | None:
 def export(results: dict[Result, list[str]]) -> None:
     """Display the collected results."""
     for res, platforms in results.items():
-        print(f"::{res.kind} file={res.filename},line={res.start_line},", end="")
+        print(
+            f"::{res.kind} file={res.filename},line={res.start_line},",
+            end="",
+        )
         if res.start_col is not None:
             print(f"col={res.start_col},", end="")
             if res.end_col is not None and res.end_line is not None:
-                print(f"endLine={res.end_line},endColumn={res.end_col},", end="")
+                print(
+                    f"endLine={res.end_line},endColumn={res.end_col},",
+                    end="",
+                )
                 message = f"({res.start_line}:{res.start_col} - {res.end_line}:{res.end_col}):{res.message}"
             else:
                 message = f"({res.start_line}:{res.start_col}):{res.message}"

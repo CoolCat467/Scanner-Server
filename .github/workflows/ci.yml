@@ -1,5 +1,7 @@
 name: CI
 
+permissions: {}
+
 on:
   push:
     branches-ignore:
@@ -32,6 +34,8 @@ jobs:
 ##    steps:
 ##      - name: Checkout
 ##        uses: actions/checkout@v4
+##        with:
+##          persist-credentials: false
 ##      - name: Setup python
 ##        uses: actions/setup-python@v5
 ##        with:
@@ -78,6 +82,8 @@ jobs:
       }}
     steps:
       - name: Checkout
+        with:
+          persist-credentials: false
         uses: actions/checkout@v4
       - name: Setup python
         uses: actions/setup-python@v5
@@ -116,6 +122,8 @@ jobs:
 ##    steps:
 ##      - name: Checkout
 ##        uses: actions/checkout@v4
+##        with:
+##          persist-credentials: false
 ##      - name: Setup python
 ##        uses: actions/setup-python@v5
 ##        with:
