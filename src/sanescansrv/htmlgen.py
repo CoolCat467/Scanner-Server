@@ -92,11 +92,11 @@ def css_block(
 
 def css(
     selector: str | list[str] | tuple[str, ...],
-    /,
+    *subblocks: str,
     **kwargs: TagArg | list[TagArg] | tuple[TagArg, ...],
 ) -> str:
     """Return CSS block."""
-    properties = "\n".join(css_style(**kwargs))
+    properties = "\n".join((*subblocks, *css_style(**kwargs)))
     return css_block(selector, properties)
 
 

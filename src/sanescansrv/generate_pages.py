@@ -160,6 +160,41 @@ def generate_style_css() -> str:
                 margin_right="0.5rem",
                 min_width="min-content",
             ),
+            htmlgen.css(
+                "@media (prefers-color-scheme: dark)",
+                htmlgen.css(
+                    "body",
+                    background_color="#181818",
+                    color="#e0e0e0",
+                ),
+                htmlgen.css(
+                    ".box",
+                    background_color="#1e1e1e",
+                    border=("2px", "solid", "#444"),
+                ),
+                htmlgen.css(
+                    "code",
+                    background_color="rgba(255, 255, 255, 0.1)",
+                ),
+                htmlgen.css(
+                    ("input", "button"),
+                    background_color="#1e1e1e",
+                    color="#e0e0e0",
+                    border=("2px", "solid", "#444"),
+                ),
+                htmlgen.css(
+                    ("input:hover", "button:hover"),
+                    background_color="#4a4a4a",
+                ),
+                htmlgen.css(
+                    "a",
+                    color="#bb86fc",
+                ),
+                htmlgen.css(
+                    "a:hover",
+                    color="#3700b3",
+                ),
+            ),
         ),
     )
 
