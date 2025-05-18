@@ -84,10 +84,4 @@ input[type="submit"] {
   input:hover, button:hover {
     background-color: #4a4a4a;
   }
-  a {
-    color: #bb86fc;
-  }
-  a:hover {
-    color: #3700b3;
-  }
 }

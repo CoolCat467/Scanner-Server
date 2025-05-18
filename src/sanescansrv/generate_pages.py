@@ -186,14 +186,6 @@ def generate_style_css() -> str:
                     ("input:hover", "button:hover"),
                     background_color="#4a4a4a",
                 ),
-                htmlgen.css(
-                    "a",
-                    color="#bb86fc",
-                ),
-                htmlgen.css(
-                    "a:hover",
-                    color="#3700b3",
-                ),
             ),
         ),
     )

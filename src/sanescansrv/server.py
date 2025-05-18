@@ -60,7 +60,6 @@ from quart_trio import QuartTrio
 from werkzeug.exceptions import HTTPException
 
 from sanescansrv import elapsed, htmlgen, logger
-from sanescansrv.logger import log
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -1123,10 +1122,7 @@ def serve_scanner(
         caught = False
         for ex in exc.exceptions:
             if isinstance(ex, KeyboardInterrupt):
-                log(
-                    "Shutting down from keyboard interrupt",
-                    log_dir=str(logs_path),
-                )
+                print("Shutting down from keyboard interrupt")
                 caught = True
                 break
         if not caught:

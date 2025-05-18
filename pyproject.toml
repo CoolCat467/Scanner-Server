@@ -41,10 +41,6 @@ dependencies = [
     "Werkzeug~=3.1.3",
     'exceptiongroup >= 1.2.0; python_version < "3.11"',
     'tomli >= 2.0.1; python_version < "3.11"',
-    # temporary until flask release that includes
-    # https://github.com/pallets/flask/pull/5659 happens
-    # for typing reasons
-    "flask @ git+https://github.com/pallets/flask.git",
 ]
 
 [tool.setuptools.dynamic]
