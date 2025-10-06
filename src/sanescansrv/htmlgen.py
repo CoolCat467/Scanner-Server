@@ -22,7 +22,7 @@ __title__ = "HTML Generation"
 __author__ = "CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, TypeAlias, Union
 
 if TYPE_CHECKING:  # pragma: nocover
     from collections.abc import Generator, Iterable, Mapping
@@ -40,7 +40,7 @@ def deindent(level: int, text: str) -> str:
     return "\n".join(line.removeprefix(prefix) for line in text.splitlines())
 
 
-TagArg = Union[str, int, float, bool]
+TagArg: TypeAlias = Union[str, int, float, bool]
 
 
 def _quote_strings(values: Iterable[TagArg]) -> Generator[str, None, None]:
@@ -464,12 +464,16 @@ def jinja_arg_tag(
     /,
     **kwargs: TagArg,
 ) -> str:
-    """Return HTML tag. Removes trailing underscore from argument names."""
+    """Return HTML tag. Removes trailing underscore from argument names.
+
+    For properties, make sure jinja expression value ends with a space
+    if tag arguments are to follow.
+    """
     args = "".join(jinja_properties)
     if args:
         args = f" {args}"
     if kwargs:
-        args = f"{args} " + " ".join(_generate_html_attributes(kwargs))
+        args += " ".join(_generate_html_attributes(kwargs))
     return f"<{type_}{args}>"
 
 

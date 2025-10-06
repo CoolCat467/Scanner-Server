@@ -15,10 +15,10 @@
           <span>Select Image format:</span>
           <br>
           <br>
-          <input type="radio" id="img_format_0" name="img_format" value="png" checked="checked">
+          <input type="radio" id="img_format_0" name="img_format" value="png">
           <label for="img_format_0">PNG</label>
           <br>
-          <input type="radio" id="img_format_1" name="img_format" value="jpeg">
+          <input type="radio" id="img_format_1" name="img_format" value="jpeg" checked="checked">
           <label for="img_format_1">JPEG</label>
           <br>
           <input type="radio" id="img_format_2" name="img_format" value="pnm">
@@ -32,7 +32,7 @@
           <span>Select a Scanner:</span>
           <br>
           {% for scanner in scanners %}
-          <input {% if scanner.device_name == default %}checked="checked"{% endif %}{% if not scanner.active %}disabled{% endif %} type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ scanner.device_name }}">
+          <input {% if scanner.device_name == default %}checked="checked" {% endif %}{% if not scanner.active %}disabled="disabled" {% endif %}type="radio" id="scanner_{{ loop.index0 }}" name="scanner" value="{{ scanner.device_name }}">
           <label for="scanner_{{ loop.index0 }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</label>
           <br>
           {% else %}

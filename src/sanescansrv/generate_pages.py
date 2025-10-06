@@ -299,17 +299,13 @@ def generate_scanners() -> str:
         "name": "scanner",
         "value": htmlgen.jinja_expression("scanner.device_name"),
     }
-    jinja_properties: tuple[str, ...] = ()
-    default_tag = " ".join(
-        htmlgen._generate_html_attributes({"checked": "checked"}),
-    )
-    jinja_properties = (
+    jinja_properties: tuple[str, ...] = (
         htmlgen.jinja_if_block(
-            {f"scanner.device_name == {default}": default_tag},
+            {f"scanner.device_name == {default}": 'checked="checked" '},
             block=False,
         ),
         htmlgen.jinja_if_block(
-            {"not scanner.active": "disabled"},
+            {"not scanner.active": 'disabled="disabled" '},
             block=False,
         ),
     )
@@ -360,7 +356,7 @@ def generate_root_get() -> str:
     image_format = htmlgen.select_box(
         "img_format",
         {v.upper(): v for v in ("png", "jpeg", "pnm", "tiff")},
-        "png",
+        "jpeg",
         "Select Image format:",
     )
 
@@ -409,11 +405,11 @@ def generate_scanners_get() -> str:
     )
 
     scanner = " ".join(
-        [
+        (
             htmlgen.jinja_expression("scanner.vendor"),
             htmlgen.jinja_expression("scanner.model"),
             f"({scanner_type_italics})",
-        ],
+        ),
     )
 
     scanners = htmlgen.jinja_bullet_list(

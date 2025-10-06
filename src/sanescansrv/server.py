@@ -378,7 +378,7 @@ class DeviceOption(DeviceOptionDataClass):
             return self.default
         return self._value
 
-    @value.setter
+    @value.setter  # type: ignore[override]
     def value(self, value: str | int | float | bool) -> None:
         if not self.settable:
             raise ValueError(f"Attribute {self.name} is not settable")
@@ -646,7 +646,7 @@ async def scan_status_get() -> (
 
     progress: ScanProgress | None = None
     time_deltas_ns: list[int] | None = None
-    delay = 5
+    delay = 2
     estimated_wait: int = 120
 
     if status == ScanStatus.STARTED:
@@ -657,6 +657,10 @@ async def scan_status_get() -> (
 
         assert isinstance(progress, ScanProgress)
         assert isinstance(time_deltas_ns, list)
+
+        # Remove first couple of values (takes time to start)
+        if len(time_deltas_ns) > 1:
+            time_deltas_ns = time_deltas_ns[1:]
 
         # Estimate when the scan will be done
         # Nanoseconds
@@ -678,11 +682,13 @@ async def scan_status_get() -> (
 
 def get_default_device() -> str:
     """Retrieve the default scan device."""
-    device = get_scanner(APP_STORAGE["default_device"])
+    device = get_scanner_by_vendor_model(APP_STORAGE["default_device"])
     if device is not None:
         return device.device_name
     try:
         device = APP_STORAGE["scanners"][0]
+        if not isinstance(device, Device):
+            return "None"
         return device.device_name
     except IndexError:
         return "None"
@@ -891,6 +897,18 @@ def get_scanner(scanner: str) -> Device | None:
     if scanner not in scanners:
         return None
     idx = scanners.index(scanner)
+    item = devices[idx]
+    assert isinstance(item, Device)
+    return item
+
+
+def get_scanner_by_vendor_model(vendor_model: str) -> Device | None:
+    """Get scanner device from globally stored devices."""
+    devices: list[Device] = APP_STORAGE.get("scanners", [])
+    models = [f"{device.vendor} {device.model}" for device in devices]
+    if vendor_model not in models:
+        return None
+    idx = models.index(vendor_model)
     item = devices[idx]
     assert isinstance(item, Device)
     return item
