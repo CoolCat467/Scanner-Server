@@ -473,6 +473,8 @@ def jinja_arg_tag(
     if args:
         args = f" {args}"
     if kwargs:
+        if not args:
+            args += " "
         args += " ".join(_generate_html_attributes(kwargs))
     return f"<{type_}{args}>"
 
@@ -494,12 +496,9 @@ def jinja_radio_select(
     }
     jinja_properties: tuple[str, ...] = ()
     if default is not None:
-        default_tag = " ".join(
-            _generate_html_attributes({"checked": "checked"}),
-        )
         jinja_properties = (
             jinja_if_block(
-                {f"value == {default}": default_tag},
+                {f"value == {default}": 'checked="checked" '},
                 block=False,
             ),
         )

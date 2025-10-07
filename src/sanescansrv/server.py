@@ -335,11 +335,11 @@ class DeviceOptionDataClass:
     py_name: str = field(repr=False)
     active: bool
     settable: bool
-    default: None | str | int | float | bool = field(
+    default: str | int | float | bool | None = field(
         init=False,
         default=None,
     )
-    value: None | str | int | float = field(
+    value: str | int | float | bool | None = field(
         init=False,
         default=None,
     )

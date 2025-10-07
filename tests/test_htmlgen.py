@@ -502,7 +502,7 @@ There are no cat elements
     [
         ("p", ("jinja",), {}, "<p jinja>"),
         ("p", (), {"fish": "false"}, '<p fish="false">'),
-        ("p", ("jinja",), {"fish": "false"}, '<p jinja fish="false">'),
+        ("p", ("jinja ",), {"fish": "false"}, '<p jinja fish="false">'),
         ("i", (), {}, "<i>"),
         (
             "input",
@@ -512,7 +512,7 @@ There are no cat elements
         ),
         (
             "input",
-            ("jinja",),
+            ("jinja ",),
             {"type": "radio", "id": "0", "name": "test", "value_": "Example"},
             '<input jinja type="radio" id="0" name="test" value="Example">',
         ),
@@ -542,7 +542,7 @@ def test_jinja_radio_select_default() -> None:
     assert (
         htmlgen.jinja_radio_select("submits", "option_data", "default text")
         == """{% for display, value in option_data.items() %}
-<input {% if value == default text %}checked="checked"{% endif %} type="radio" id="submits_{{ loop.index0 }}" name="submits" value="{{ value }}">
+<input {% if value == default text %}checked="checked" {% endif %}type="radio" id="submits_{{ loop.index0 }}" name="submits" value="{{ value }}">
 <label for="submits_{{ loop.index0 }}">{{ display }}</label>
 <br>
 {% endfor %}"""
