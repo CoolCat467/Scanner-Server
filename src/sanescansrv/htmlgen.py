@@ -22,10 +22,12 @@ __title__ = "HTML Generation"
 __author__ = "CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
-from typing import TYPE_CHECKING, TypeAlias, Union
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:  # pragma: nocover
     from collections.abc import Generator, Iterable, Mapping
+
+    from typing_extensions import TypeAlias
 
 
 def indent(level: int, text: str) -> str:
