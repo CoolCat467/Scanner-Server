@@ -191,11 +191,7 @@ def pretty_exception(
             return await function(*args, **kwargs)
         except Exception as exception:
             # traceback.print_exception changed in 3.10
-            if sys.version_info < (3, 10):
-                tb = sys.exc_info()[2]
-                traceback.print_exception(etype=None, value=exception, tb=tb)
-            else:
-                traceback.print_exception(exception)
+            traceback.print_exception(exception)
 
             if isinstance(exception, HTTPException):
                 code = exception.code or code
@@ -576,11 +572,7 @@ async def preform_scan_async(
             )
         except (SaneError, RuntimeError) as exc:
             # traceback.print_exception changed in 3.10
-            if sys.version_info < (3, 10):
-                tb = sys.exc_info()[2]
-                traceback.print_exception(etype=None, value=exc, tb=tb)
-            else:
-                traceback.print_exception(exc)
+            traceback.print_exception(exc)
 
             APP_STORAGE["scan_status"] = (
                 ScanStatus.ERROR,

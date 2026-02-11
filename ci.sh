@@ -33,7 +33,7 @@ python -m uv --version
 UV_VENV_SEED="pip"
 python -m uv venv --seed --allow-existing
 
-# Determine platform and activate virtual environment accordingly
+# Determine the platform and activate the virtual environment accordingly
 case "$OSTYPE" in
   linux-gnu*|linux-musl*|darwin*)
     source .venv/bin/activate
@@ -79,9 +79,6 @@ else
 
     INSTALLDIR=$(python -c "import os, $PROJECT; print(os.path.dirname($PROJECT.__file__))")
     cp ../pyproject.toml "$INSTALLDIR"
-
-    # get mypy tests a nice cache
-    MYPYPATH=".." mypy --config-file= --cache-dir=./.mypy_cache -c "import $PROJECT" >/dev/null 2>/dev/null || true
 
     echo "::endgroup::"
     echo "::group:: Run Tests"

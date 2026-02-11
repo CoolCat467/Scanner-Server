@@ -124,9 +124,12 @@ def test_wrap_tag(
 
 
 def test_wrap_comment() -> None:
-    assert htmlgen.wrap_comment("this is comment") == """<!--
+    assert (
+        htmlgen.wrap_comment("this is comment")
+        == """<!--
 this is comment
 -->"""
+    )
 
 
 def test_wrap_comment_inline() -> None:
@@ -188,9 +191,12 @@ def test_template_no_tag() -> None:
 
 
 def test_contain_in_box_none() -> None:
-    assert htmlgen.contain_in_box("inside woo") == """<div class="box">
+    assert (
+        htmlgen.contain_in_box("inside woo")
+        == """<div class="box">
   inside woo
 </div>"""
+    )
 
 
 def test_contain_in_box_named() -> None:
@@ -334,7 +340,8 @@ def test_input_field_exception() -> None:
 
 def test_bullet_list() -> None:
     assert (
-        htmlgen.bullet_list(["one", "two"], flag="bean") == """<ul flag="bean">
+        htmlgen.bullet_list(["one", "two"], flag="bean")
+        == """<ul flag="bean">
   <li>one</li>
   <li>two</li>
 </ul>"""

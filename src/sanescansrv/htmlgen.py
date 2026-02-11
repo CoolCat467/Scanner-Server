@@ -22,12 +22,11 @@ __title__ = "HTML Generation"
 __author__ = "CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: nocover
     from collections.abc import Generator, Iterable, Mapping
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
 
 def indent(level: int, text: str) -> str:
@@ -42,7 +41,7 @@ def deindent(level: int, text: str) -> str:
     return "\n".join(line.removeprefix(prefix) for line in text.splitlines())
 
 
-TagArg: TypeAlias = Union[str, int, float, bool]
+TagArg: TypeAlias = str | int | float | bool
 
 
 def _quote_strings(values: Iterable[TagArg]) -> Generator[str, None, None]:
