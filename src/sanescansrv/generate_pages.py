@@ -191,15 +191,9 @@ def generate_style_css() -> str:
     )
 
 
-def template(
-    title: str,
-    body: str,
-    *,
-    head: str = "",
-    body_tag: dict[str, htmlgen.TagArg] | None = None,
-    lang: str = "en",
-) -> str:
-    """HTML Template for application."""
+@save_template_as("base")
+def base_template() -> str:
+    """Generate base HTML Template for application."""
     head_data = "\n".join(
         (
             htmlgen.tag(
@@ -208,13 +202,8 @@ def template(
                 type_="text/css",
                 href="/style.css",
             ),
-            head,
+            htmlgen.jinja_block("head", scoped=True, block=False),
         ),
-    )
-
-    join_body = (
-        htmlgen.wrap_tag("h1", title, False),
-        body,
     )
 
     footer = f"{server.__title__} v{server.__version__} © {server.__author__}"
@@ -223,7 +212,21 @@ def template(
         (
             htmlgen.wrap_tag(
                 "div",
-                "\n".join(join_body),
+                "\n".join(
+                    (
+                        htmlgen.wrap_tag(
+                            "h1",
+                            htmlgen.jinja_expression("self.title()"),
+                            False,
+                        ),
+                        htmlgen.jinja_block(
+                            "body",
+                            scoped=True,
+                            required=True,
+                            block=False,
+                        ),
+                    ),
+                ),
                 class_="content",
             ),
             htmlgen.wrap_tag(
@@ -248,12 +251,45 @@ def template(
     )
 
     return htmlgen.template(
-        title,
+        htmlgen.jinja_block(
+            "title",
+            scoped=True,
+            required=True,
+            block=False,
+        ),
         body_data,
         head=head_data,
-        body_tag=body_tag,
-        lang=lang,
+        lang=htmlgen.jinja_block(
+            "lang",
+            "en",
+            scoped=True,
+            block=False,
+        ),
     )
+
+
+def template(
+    title: str,
+    body: str,
+    *,
+    head: str = "",
+    lang: str = "en",
+) -> str:
+    """Use base HTML Template for application."""
+    sections = [
+        htmlgen.jinja_extends("base.html.jinja"),
+        htmlgen.jinja_block("title", title, block=False),
+    ]
+
+    if head:
+        sections.append(htmlgen.jinja_block("head", head))
+
+    if lang != "en":
+        sections.append(htmlgen.jinja_block("lang", lang))
+
+    sections.append(htmlgen.jinja_block("body", body))
+
+    return "\n".join(sections)
 
 
 @save_template_as("error_page")
@@ -297,7 +333,7 @@ def generate_scanners() -> str:
         "type": "radio",
         "id": cid,
         "name": "scanner",
-        "value": htmlgen.jinja_expression("scanner.device_name"),
+        "value": htmlgen.jinja_expression("scanner.device_name|escape"),
     }
     jinja_properties: tuple[str, ...] = (
         htmlgen.jinja_if_block(
@@ -312,7 +348,7 @@ def generate_scanners() -> str:
 
     scanner_type_italics = htmlgen.wrap_tag(
         "i",
-        htmlgen.jinja_expression("scanner.type_"),
+        htmlgen.jinja_expression("scanner.type_|escape"),
         block=False,
     )
 
@@ -326,8 +362,8 @@ def generate_scanners() -> str:
                     "label",
                     " ".join(
                         [
-                            htmlgen.jinja_expression("scanner.vendor"),
-                            htmlgen.jinja_expression("scanner.model"),
+                            htmlgen.jinja_expression("scanner.vendor|escape"),
+                            htmlgen.jinja_expression("scanner.model|escape"),
                             f"({scanner_type_italics})",
                         ],
                     ),
@@ -400,14 +436,14 @@ def generate_scanners_get() -> str:
     """Generate /scanners GET page."""
     scanner_type_italics = htmlgen.wrap_tag(
         "i",
-        htmlgen.jinja_expression("scanner.type_"),
+        htmlgen.jinja_expression("scanner.type_|escape"),
         block=False,
     )
 
     scanner = " ".join(
         (
-            htmlgen.jinja_expression("scanner.vendor"),
-            htmlgen.jinja_expression("scanner.model"),
+            htmlgen.jinja_expression("scanner.vendor|escape"),
+            htmlgen.jinja_expression("scanner.model|escape"),
             f"({scanner_type_italics})",
         ),
     )

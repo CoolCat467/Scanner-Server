@@ -1,41 +1,26 @@
-<!DOCTYPE HTML>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Devices</title>
-    <link rel="stylesheet" type="text/css" href="/style.css">
-  </head>
-  <body>
-    <div class="content">
-      <h1>Devices</h1>
-      <div class="box">
-        <span>Devices:</span>
-        <br>
-        <ul>
-          {% for scanner in scanners %}
-          <li>{% if scanner.active %}
-          <a href="/settings?{{ scanner.url }}">{{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)</a>
-          {% else %}
-          {{ scanner.vendor }} {{ scanner.model }} (<i>{{ scanner.type_ }}</i>)
-          {% endif %}</li>
-          {% else %}
-          <p>There were no devices detected. Are your device(s) turned on?</p>
-          {% endfor %}
-        </ul>
-      </div>
-      <br>
-      <a href="/"><button>
-        Scan Request
-      </button></a>
-      <a href="/update_scanners"><button>
-        Update Devices
-      </button></a>
-    </div>
-    <footer>
-      <i>If you're reading this, the web server was installed correctly.™</i>
-      <hr>
-      <p>Sane Scanner Webserver v3.2.0 © CoolCat467</p>
-    </footer>
-  </body>
-</html>
+{% extends "base.html.jinja" %}
+{% block title %}Devices{% endblock title %}
+{% block body %}
+<div class="box">
+  <span>Devices:</span>
+  <br>
+  <ul>
+    {% for scanner in scanners %}
+    <li>{% if scanner.active %}
+    <a href="/settings?{{ scanner.url }}">{{ scanner.vendor|escape }} {{ scanner.model|escape }} (<i>{{ scanner.type_|escape }}</i>)</a>
+    {% else %}
+    {{ scanner.vendor|escape }} {{ scanner.model|escape }} (<i>{{ scanner.type_|escape }}</i>)
+    {% endif %}</li>
+    {% else %}
+    <p>There were no devices detected. Are your device(s) turned on?</p>
+    {% endfor %}
+  </ul>
+</div>
+<br>
+<a href="/"><button>
+  Scan Request
+</button></a>
+<a href="/update_scanners"><button>
+  Update Devices
+</button></a>
+{% endblock body %}

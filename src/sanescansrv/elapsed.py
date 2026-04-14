@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 # Elapsed Time
-# Copyright (C) 2022-2024  CoolCat467
+# Copyright (C) 2022-2026  CoolCat467
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ __author__ = "CoolCat467"
 __license__ = "GNU General Public License Version 3"
 
 
-def split_time(seconds: int) -> list[int]:
+def split_time(seconds: int | float) -> list[int]:
     """Split time into units of time."""
     seconds = int(seconds)
 
@@ -61,14 +61,14 @@ def split_time(seconds: int) -> list[int]:
     return ret
 
 
-def combine_end(data: Iterable[str], final: str = "and") -> str:
+def combine_end(data: Iterable[object], final: str = "and") -> str:
     """Join values of text, and have final with the last one properly."""
-    data = list(map(str, data))
-    if len(data) >= 2:
-        data[-1] = f"{final} {data[-1]}"
-    if len(data) > 2:
-        return ", ".join(data)
-    return " ".join(data)
+    strings = list(map(str, data))
+    if len(strings) >= 2:
+        strings[-1] = f"{final} {strings[-1]}"
+    if len(strings) > 2:
+        return ", ".join(strings)
+    return " ".join(strings)
 
 
 def get_elapsed(seconds: int) -> str:
