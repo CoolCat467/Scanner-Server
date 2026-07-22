@@ -34,7 +34,7 @@ classifiers = [
 keywords = ["scanner", "sane", "server", "frontend"]
 dependencies = [
     "hypercorn[trio]~=0.18.0",
-    "Pillow~=12.2.0",
+    "Pillow~=12.3.0",
     "python-sane~=2.9.1",
     "quart~=0.20.0",
     "quart-trio~=0.12.0",
@@ -62,7 +62,7 @@ tests = [
 ]
 tools = [
     "uv>=0.11.6",
-    "mypy>=1.20.0",
+    "mypy>=2.3.0",
     "ruff>=0.15.10",
     "codespell>=2.4.2",
     "pre-commit>=4.5.1",
