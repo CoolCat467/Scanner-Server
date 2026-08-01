@@ -118,8 +118,8 @@ def restart_sane() -> None:
 class DeviceOptionsGroup:
     """A group of scanner options."""
 
-    name: None | str
-    title: None | str
+    name: str | None
+    title: str | None
 
 
 if TYPE_CHECKING:
