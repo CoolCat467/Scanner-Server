@@ -746,7 +746,7 @@ def get_setting_radio(option: DeviceOption) -> str | None:
         ##        }
         ##    else:
         ##        assert isinstance(inputs[title], dict)
-        ##        inputs[title].update({"disabled": "disabled"})  # type: ignore[union-attr]
+        ##        inputs[title].update({"disabled": "disabled"})
 
     return htmlgen.select_box(
         submit_name=option.name,

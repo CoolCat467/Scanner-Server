@@ -3,7 +3,7 @@
 {% block body %}
 {% if radios %}
 <b>Settings for "{{ scanner }}":</b>
-<form name="settings_update" method="post">
+<form id="settings_update" name="settings_update" method="post">
   {{ radios }}
   <br>
   <input type="submit" id="settings_update_submit_button" name="settings_update_submit_button" value="Save">

@@ -2,7 +2,7 @@
 {% block title %}Request Scan{% endblock title %}
 {% block body %}
 <b>Press Scan to start scanning.</b>
-<form name="scan_request" method="post">
+<form id="scan_request" name="scan_request" method="post">
   <div class="box">
     <span>Select Image format:</span>
     <br>
@@ -10,7 +10,7 @@
     <input type="radio" id="img_format_0" name="img_format" value="png">
     <label for="img_format_0">PNG</label>
     <br>
-    <input type="radio" id="img_format_1" name="img_format" value="jpeg" checked="checked">
+    <input type="radio" id="img_format_1" name="img_format" value="jpeg" checked="true">
     <label for="img_format_1">JPEG</label>
     <br>
     <input type="radio" id="img_format_2" name="img_format" value="pnm">
@@ -28,7 +28,7 @@
     <label for="scanner_{{ loop.index0 }}">{{ scanner.vendor|escape }} {{ scanner.model|escape }} (<i>{{ scanner.type_|escape }}</i>)</label>
     <br>
     {% else %}
-    <input type="radio" id="scanner_0" name="scanner" value="none" checked="checked">
+    <input type="radio" id="scanner_0" name="scanner" value="none" checked="true">
     <label for="scanner_0">None - <a href="/update_scanners">Update Devices</a></label>
     <br>
     {% endfor %}
