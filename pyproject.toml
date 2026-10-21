@@ -11,7 +11,7 @@ authors = [
 description = "Scanner Web Server - Website to talk to SANE scanners."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -34,12 +33,12 @@ classifiers = [
 keywords = ["scanner", "sane", "server", "frontend"]
 dependencies = [
     "hypercorn[trio]~=0.18.0",
-    "Pillow~=12.3.0",
-    "python-sane~=2.9.1",
-    "quart~=0.20.0",
-    "quart-trio~=0.12.0",
+    "Pillow~=13.0.0",
+    "python-sane~=2.9.2",
+    "quart>=0.22.0",
+    "quart-trio>=0.12.0",
     "trio>=0.33.0",
-    "Werkzeug~=3.1.8",
+    "Werkzeug~=3.1.9",
     'exceptiongroup >= 1.3.1; python_version < "3.11"',
     'tomli >= 2.4.1; python_version < "3.11"',
 ]

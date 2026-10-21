@@ -30,6 +30,7 @@ import statistics
 import sys
 import tempfile
 import time
+import tomllib
 import traceback
 import uuid
 from collections.abc import (
@@ -63,12 +64,6 @@ from sanescansrv.server_utils import (
     pretty_exception_name,
     send_error,
 )
-
-if sys.version_info < (3, 11):
-    import tomli as tomllib
-    from exceptiongroup import BaseExceptionGroup
-else:
-    import tomllib
 
 if TYPE_CHECKING:
     from quart.wrappers.response import Response as QuartResponse
