@@ -1,4 +1,4 @@
-"""Scanner Web Server - Website to talk to SANE scanners.
+"""Scanner Web Server - Web interface for SANE scanners.
 
 Copyright (C) 2022-2026  CoolCat467
 
@@ -24,11 +24,10 @@ __version__ = "3.2.0"
 __license__ = "GNU General Public License Version 3"
 
 
+import argparse
 import itertools
 import math
 import statistics
-import sys
-import tempfile
 import time
 import tomllib
 import traceback
@@ -41,17 +40,16 @@ from collections.abc import (
 )
 from dataclasses import dataclass, field
 from enum import IntEnum, auto
-from os import getenv, makedirs, path
 from pathlib import Path
 from shutil import rmtree
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, TypeVar
 from urllib.parse import urlencode
 
+import platformdirs
 import sane
 import trio
 from hypercorn.config import Config
 from hypercorn.trio import serve
-from PIL import Image
 from quart import request, send_file
 from quart.templating import stream_template
 from quart_trio import QuartTrio
@@ -72,17 +70,17 @@ if TYPE_CHECKING:
 
     PS = ParamSpec("PS")
 
-HOME: Final = trio.Path(getenv("HOME", path.expanduser("~")))
-XDG_DATA_HOME: Final = trio.Path(
-    getenv("XDG_DATA_HOME", HOME / ".local" / "share"),
-)
-XDG_CONFIG_HOME: Final = trio.Path(getenv("XDG_CONFIG_HOME", HOME / ".config"))
-
 FILE_TITLE: Final = __title__.lower().replace(" ", "-").replace("-", "_")
-CONFIG_PATH: Final = XDG_CONFIG_HOME / FILE_TITLE
-DATA_PATH: Final = XDG_DATA_HOME / FILE_TITLE
+CONFIG_PATH: Final = trio.Path(
+    platformdirs.user_config_path(FILE_TITLE, __author__),
+)
+DATA_PATH: Final = trio.Path(
+    platformdirs.user_data_path(FILE_TITLE, __author__),
+)
+CACHE_PATH: Final = trio.Path(
+    platformdirs.user_cache_path(FILE_TITLE, __author__),
+)
 MAIN_CONFIG: Final = CONFIG_PATH / "config.toml"
-TEMP_PATH = Path(tempfile.mkdtemp(suffix="_sane_scan_srv"))
 
 # For some reason error class is not exposed nicely; Let's fix that
 SaneError: Final = sane._sane.error
@@ -348,9 +346,9 @@ def preform_scan(
         raise ValueError("Output type must be pnm, tiff, png, or jpeg")
     filename = f"{uuid.uuid4()!s}_scan.{out_type}"
     assert app.static_folder is not None
-    if not TEMP_PATH.exists():
-        makedirs(TEMP_PATH)
-    filepath = TEMP_PATH / filename
+    if not CACHE_PATH.exists():
+        CACHE_PATH.mkdir(parents=True)
+    filepath = CACHE_PATH / filename
 
     with sane.open(device.device_name) as sane_device:
         for option in device.options:
@@ -463,7 +461,7 @@ async def handle_scan_get(
     scan_filename: str,
 ) -> tuple[AsyncIterator[str], int] | QuartResponse:
     """Handle scan result page GET request."""
-    temp_file = TEMP_PATH / scan_filename
+    temp_file = CACHE_PATH / scan_filename
     if not temp_file.exists():
         response_body = await send_error(
             page_title="404: Could Not Find Requested Scan.",
@@ -922,9 +920,9 @@ def serve_scanner(
     if not hypercorn:
         hypercorn = {}
 
-    logs_path = DATA_PATH / "logs"
-    if not path.exists(logs_path):
-        makedirs(logs_path)
+    logs_path = Path(DATA_PATH) / "logs"
+    if not logs_path.exists():
+        logs_path.mkdir(parents=True)
 
     print(f"Logs Path: {str(logs_path)!r}\n")
 
@@ -1006,24 +1004,13 @@ def serve_scanner(
                 break
         if not caught:
             raise
+    finally:
+        # Delete temporary files if they exist
+        if Path(CACHE_PATH).exists():
+            rmtree(CACHE_PATH, ignore_errors=True)
 
-    # Delete temporary files if they exist
-    if TEMP_PATH.exists():
-        rmtree(TEMP_PATH, ignore_errors=True)
 
-
-def run() -> None:
-    """Run scanner server."""
-    pil_version = getattr(Image, "__version__", None)
-    assert pil_version is not None, "PIL should have a version!"
-    print(f"PIL Image Version: {pil_version}\n")
-
-    if not path.exists(CONFIG_PATH):
-        makedirs(CONFIG_PATH)
-    if not path.exists(MAIN_CONFIG):
-        with open(MAIN_CONFIG, "w", encoding="utf-8") as fp:
-            fp.write(
-                """[main]
+DEFAULT_CONFIG_TOML: Final = """[main]
 # Name of scanner to use on default as displayed on the webpage
 # or by model as listed with `scanimage --formatted-device-list "%m%n"`
 printer = "None"
@@ -1046,13 +1033,57 @@ use_reloader = false
 # SSL configuration details
 #certfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/fullchain.pem"
 #keyfile = "/home/<your_username>/letsencrypt/config/live/<your_domain_name>.duckdns.org/privkey.pem"
-""",
-            )
+"""
 
-    print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
 
-    with open(MAIN_CONFIG, "rb") as fp:
-        config = tomllib.load(fp)
+def run() -> None:
+    """Run scanner server."""
+    parser = argparse.ArgumentParser(
+        description="Web interface for SANE scanners.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"{__title__} v{__version__}",
+        help="Show the program version and exit.",
+    )
+    parser.add_argument(
+        "--create-default-config",
+        action="store_true",
+        help="Create or overwrite the default configuration file.",
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Bind to localhost (127.0.0.1) instead of public ip address.",
+    )
+
+    args = parser.parse_args()
+
+    main_config = Path(MAIN_CONFIG)
+    if args.create_default_config:
+        print(
+            f"Creating/overwriting configuration file located at {str(MAIN_CONFIG)!r} with default...",
+        )
+        config_path = Path(CONFIG_PATH)
+        if not config_path.exists():
+            config_path.mkdir(parents=True)
+
+        main_config.write_text(DEFAULT_CONFIG_TOML, encoding="utf-8")
+
+        print("Action complete.")
+        return
+
+    if main_config.exists():
+        print(f"Reading configuration file {str(MAIN_CONFIG)!r}...\n")
+
+        with main_config.open("rb") as fp:
+            config = tomllib.load(fp)
+    else:
+        print(
+            f"Configuration file {str(main_config)!r} not found, loading default.",
+        )
+        config = tomllib.loads(DEFAULT_CONFIG_TOML)
 
     main_section = config.get("main", {})
 
@@ -1068,7 +1099,7 @@ use_reloader = false
         print("No default device in config file.\n")
 
     ip_address: str | None = None
-    if "--local" in sys.argv[1:]:
+    if args.local:
         ip_address = "127.0.0.1"
 
     serve_scanner(

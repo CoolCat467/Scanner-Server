@@ -1167,6 +1167,7 @@ source = { editable = "." }
 dependencies = [
     { name = "hypercorn", extra = ["trio"] },
     { name = "pillow" },
+    { name = "platformdirs" },
     { name = "python-sane" },
     { name = "quart", version = "0.22.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "quart", version = "0.23.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
@@ -1199,6 +1200,7 @@ requires-dist = [
     { name = "hypercorn", extras = ["trio"], specifier = "~=0.18.0" },
     { name = "mypy", marker = "extra == 'tools'", specifier = ">=2.3.0" },
     { name = "pillow", specifier = "~=13.0.0" },
+    { name = "platformdirs", specifier = ">=4.13.5" },
     { name = "pre-commit", marker = "extra == 'tools'", specifier = ">=4.5.1" },
     { name = "pytest", marker = "extra == 'tests'", specifier = ">=9.0.3" },
     { name = "pytest-cov", marker = "extra == 'tests'", specifier = ">=7.1.0" },
